@@ -26,13 +26,51 @@ command_exists() {
     command -v "$1" >/dev/null 2>&1
 }
 
+# Fonction pour vérifier les erreurs
+check_error() {
+    if [ $? -ne 0 ]; then
+        print_message "ERREUR: $1" "$RED"
+        exit 1
+    fi
+}
+
+# Fonction pour vérifier les prérequis
+check_prerequisites() {
+    print_message "Vérification des prérequis..." "$YELLOW"
+    
+    # Vérifier si le script est exécuté en tant que root
+    if [ "$EUID" -ne 0 ]; then 
+        print_message "Ce script doit être exécuté en tant que root (sudo)" "$RED"
+        exit 1
+    fi
+    
+    # Vérifier l'espace disque
+    FREE_SPACE=$(df -m / | awk 'NR==2 {print $4}')
+    if [ "$FREE_SPACE" -lt 1000 ]; then
+        print_message "ERREUR: Espace disque insuffisant. Au moins 1GB est requis." "$RED"
+        exit 1
+    fi
+    
+    # Vérifier la mémoire
+    TOTAL_MEM=$(free -m | awk '/^Mem:/{print $2}')
+    if [ "$TOTAL_MEM" -lt 512 ]; then
+        print_message "ERREUR: Mémoire insuffisante. Au moins 512MB est requis." "$RED"
+        exit 1
+    fi
+    
+    print_message "Prérequis vérifiés avec succès." "$GREEN"
+}
+
 # Fonction pour installer les prérequis
 install_prerequisites() {
     print_message "Installation des prérequis..." "$YELLOW"
     
     # Mettre à jour les paquets
     sudo apt-get update
+    check_error "Échec de la mise à jour des paquets"
+    
     sudo apt-get upgrade -y
+    check_error "Échec de la mise à niveau des paquets"
     
     # Installer les paquets essentiels
     sudo apt-get install -y \
@@ -48,36 +86,35 @@ install_prerequisites() {
         libffi-dev \
         python3-dev \
         python3-pip
+    check_error "Échec de l'installation des paquets essentiels"
     
     # Ajouter le dépôt PHP
     if is_raspberry_pi; then
-        # Pour Raspberry Pi, on utilise le dépôt Sury
+        # Pour Raspberry Pi, on utilise les paquets par défaut
+        sudo apt-get install -y php php-cli php-common php-mysql php-zip php-gd php-mbstring php-curl php-xml php-bcmath php-json php-opcache php-intl php-ldap php-redis php-imagick
+    else
+        # Pour les autres systèmes, on utilise le dépôt Sury
         curl -sSL https://packages.sury.org/php/apt.gpg -o /etc/apt/trusted.gpg.d/php.gpg
         echo "deb https://packages.sury.org/php/ $(lsb_release -sc) main" | sudo tee /etc/apt/sources.list.d/php.list
-    else
-        sudo add-apt-repository ppa:ondrej/php -y
+        sudo apt-get update
+        sudo apt-get install -y \
+            php8.1 \
+            php8.1-cli \
+            php8.1-common \
+            php8.1-mysql \
+            php8.1-zip \
+            php8.1-gd \
+            php8.1-mbstring \
+            php8.1-curl \
+            php8.1-xml \
+            php8.1-bcmath \
+            php8.1-json \
+            php8.1-opcache \
+            php8.1-intl \
+            php8.1-ldap \
+            php8.1-redis \
+            php8.1-imagick
     fi
-    
-    sudo apt-get update
-    
-    # Installer PHP 8.1 et ses extensions
-    sudo apt-get install -y \
-        php8.1 \
-        php8.1-cli \
-        php8.1-common \
-        php8.1-mysql \
-        php8.1-zip \
-        php8.1-gd \
-        php8.1-mbstring \
-        php8.1-curl \
-        php8.1-xml \
-        php8.1-bcmath \
-        php8.1-json \
-        php8.1-opcache \
-        php8.1-intl \
-        php8.1-ldap \
-        php8.1-redis \
-        php8.1-imagick
     
     # Installer MySQL (MariaDB)
     sudo apt-get install -y mariadb-server
@@ -122,7 +159,7 @@ EOL
     # Configurer PHP avec des paramètres optimisés pour Raspberry Pi
     if is_raspberry_pi; then
         # Optimisations spécifiques pour Raspberry Pi
-        sudo tee /etc/php/8.1/apache2/conf.d/99-pixel-hub.ini > /dev/null << EOL
+        sudo tee /etc/php/conf.d/99-pixel-hub.ini > /dev/null << EOL
 memory_limit = 128M
 upload_max_filesize = 32M
 post_max_size = 32M
@@ -165,10 +202,20 @@ install_application() {
     
     # Créer le répertoire de l'application
     sudo mkdir -p /var/www/pixel-hub
+    check_error "Échec de la création du répertoire"
+    
     sudo chown -R $USER:$USER /var/www/pixel-hub
+    check_error "Échec de la modification des permissions"
     
     # Cloner le dépôt
-    git clone https://github.com/Maxymou/pixel-hub-web.git /var/www/pixel-hub
+    if [ -d "/var/www/pixel-hub/.git" ]; then
+        print_message "Le dépôt existe déjà. Mise à jour..." "$YELLOW"
+        cd /var/www/pixel-hub
+        git pull
+    else
+        git clone https://github.com/Maxymou/pixel-hub-web.git /var/www/pixel-hub
+    fi
+    check_error "Échec du clonage du dépôt"
     
     # Aller dans le répertoire
     cd /var/www/pixel-hub
@@ -269,14 +316,28 @@ restart_services() {
 main() {
     print_message "Démarrage de l'installation automatique de Pixel Hub Web..." "$YELLOW"
     
+    # Vérifier les prérequis
+    check_prerequisites
+    
+    # Installer les prérequis
     install_prerequisites
+    
+    # Configurer l'environnement
     configure_environment
+    
+    # Installer l'application
     install_application
+    
+    # Configurer Apache
     configure_apache
+    
+    # Redémarrer les services
     restart_services
     
     print_message "Installation terminée avec succès !" "$GREEN"
     print_message "Vous pouvez maintenant accéder à Pixel Hub Web à l'adresse : http://localhost" "$GREEN"
+    print_message "Si vous rencontrez des problèmes, consultez les logs :" "$YELLOW"
+    print_message "sudo tail -f /var/log/apache2/pixel-hub-error.log" "$YELLOW"
 }
 
 # Exécuter la fonction principale
