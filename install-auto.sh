@@ -410,6 +410,9 @@ configure_database() {
     sudo systemctl start mariadb
     sudo systemctl enable mariadb
     
+    # Attendre que MariaDB soit prêt
+    sleep 5
+    
     # Demander les mots de passe
     read -p "Entrez le mot de passe MySQL root : " MYSQL_ROOT_PASSWORD
     read -p "Entrez le mot de passe pour l'utilisateur pixel_hub : " MYSQL_PASSWORD
@@ -417,7 +420,34 @@ configure_database() {
     # Vérifier que le mot de passe root est correct
     if ! sudo mysql -u root -p"$MYSQL_ROOT_PASSWORD" -e "SELECT 1;" &> /dev/null; then
         print_message "ERREUR: Mot de passe root incorrect ou MariaDB non démarré." "$RED"
-        exit 1
+        print_message "Tentative de réinitialisation du mot de passe root..." "$YELLOW"
+        
+        # Arrêter MariaDB
+        sudo systemctl stop mariadb
+        
+        # Démarrer MariaDB en mode sans privilèges
+        sudo mysqld_safe --skip-grant-tables --skip-networking &
+        sleep 5
+        
+        # Réinitialiser le mot de passe root
+        sudo mysql -u root << MYSQL_RESET
+FLUSH PRIVILEGES;
+ALTER USER 'root'@'localhost' IDENTIFIED BY '$MYSQL_ROOT_PASSWORD';
+FLUSH PRIVILEGES;
+MYSQL_RESET
+        
+        # Arrêter le serveur en mode sans privilèges
+        sudo killall mysqld
+        sleep 5
+        
+        # Redémarrer MariaDB normalement
+        sudo systemctl start mariadb
+        
+        # Vérifier à nouveau le mot de passe
+        if ! sudo mysql -u root -p"$MYSQL_ROOT_PASSWORD" -e "SELECT 1;" &> /dev/null; then
+            print_message "ERREUR: Impossible de configurer le mot de passe root." "$RED"
+            exit 1
+        fi
     fi
     
     # Sécuriser l'installation de MariaDB
@@ -434,7 +464,8 @@ MYSQL_SECURE
     # Créer la base de données et l'utilisateur
     sudo mysql -u root -p"$MYSQL_ROOT_PASSWORD" << MYSQL_SCRIPT
 CREATE DATABASE IF NOT EXISTS pixel_hub CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-CREATE USER IF NOT EXISTS 'pixel_hub'@'localhost' IDENTIFIED BY '$MYSQL_PASSWORD';
+DROP USER IF EXISTS 'pixel_hub'@'localhost';
+CREATE USER 'pixel_hub'@'localhost' IDENTIFIED BY '$MYSQL_PASSWORD';
 GRANT ALL PRIVILEGES ON pixel_hub.* TO 'pixel_hub'@'localhost';
 FLUSH PRIVILEGES;
 MYSQL_SCRIPT
@@ -458,6 +489,10 @@ MYSQL_SCRIPT
         if ! sudo mysql -u root -p"$MYSQL_ROOT_PASSWORD" -e "SHOW GRANTS FOR 'pixel_hub'@'localhost';" | grep -q "ALL PRIVILEGES"; then
             print_message "ERREUR: L'utilisateur pixel_hub n'a pas les privilèges nécessaires." "$RED"
         fi
+        
+        # Afficher les logs MariaDB
+        print_message "Dernières lignes des logs MariaDB :" "$YELLOW"
+        sudo tail -n 50 /var/log/mysql/error.log
         
         exit 1
     fi
