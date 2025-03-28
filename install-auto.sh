@@ -457,24 +457,98 @@ return [
 ];
 EOL
     
+    # Créer les fichiers de configuration
+    create_php_config
+    create_env_file
+    
     print_message "Application installée avec succès." "$GREEN"
 }
 
 # Fonction pour obtenir l'adresse IP
 get_ip_address() {
-    if is_raspberry_pi; then
-        # Pour Raspberry Pi, on utilise eth0 ou wlan0
-        if ip addr show eth0 &> /dev/null; then
+    # D'abord essayer d'obtenir l'adresse IP via hostname -I
+    IP=$(hostname -I | awk '{print $1}')
+    
+    # Si aucune adresse IP n'est trouvée, essayer les interfaces réseau
+    if [ -z "$IP" ]; then
+        if [ -f "/sys/class/net/eth0/address" ]; then
             IP=$(ip addr show eth0 | grep "inet\b" | awk '{print $2}' | cut -d/ -f1)
-        elif ip addr show wlan0 &> /dev/null; then
+        elif [ -f "/sys/class/net/wlan0/address" ]; then
             IP=$(ip addr show wlan0 | grep "inet\b" | awk '{print $2}' | cut -d/ -f1)
-        else
-            IP=$(hostname -I | awk '{print $1}')
         fi
-    else
-        IP=$(hostname -I | awk '{print $1}')
     fi
-    echo "$IP"
+    
+    # Si toujours aucune adresse IP, retourner localhost
+    if [ -z "$IP" ]; then
+        echo "localhost"
+    else
+        echo "$IP"
+    fi
+}
+
+# Fonction pour créer le fichier de configuration PHP
+create_php_config() {
+    print_message "Création du fichier de configuration PHP..." "$YELLOW"
+    
+    cat > /etc/php/conf.d/99-pixel-hub.ini << EOF
+memory_limit = 256M
+max_execution_time = 300
+upload_max_filesize = 64M
+post_max_size = 64M
+date.timezone = "Europe/Paris"
+display_errors = Off
+log_errors = On
+error_log = /var/log/php/error.log
+EOF
+    
+    # Créer le répertoire de logs PHP s'il n'existe pas
+    mkdir -p /var/log/php
+    chown www-data:www-data /var/log/php
+    chmod 755 /var/log/php
+    
+    check_error "Création du fichier de configuration PHP"
+}
+
+# Fonction pour créer le fichier .env
+create_env_file() {
+    print_message "Création du fichier .env..." "$YELLOW"
+    
+    cat > /var/www/pixel-hub/.env << EOF
+APP_NAME=PixelHub
+APP_ENV=production
+APP_KEY=
+APP_DEBUG=false
+APP_URL=http://\$(get_ip_address)
+
+LOG_CHANNEL=stack
+LOG_DEPRECATIONS_CHANNEL=null
+LOG_LEVEL=error
+
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=pixel_hub
+DB_USERNAME=pixel_hub
+DB_PASSWORD=$MYSQL_PASSWORD
+
+BROADCAST_DRIVER=log
+CACHE_DRIVER=file
+FILESYSTEM_DISK=local
+QUEUE_CONNECTION=sync
+SESSION_DRIVER=file
+SESSION_LIFETIME=120
+EOF
+    
+    # Générer la clé d'application
+    cd /var/www/pixel-hub
+    php -r "echo base64_encode(random_bytes(32));" > .env.key
+    sed -i "s/APP_KEY=/APP_KEY=$(cat .env.key)/" .env
+    rm .env.key
+    
+    chown www-data:www-data /var/www/pixel-hub/.env
+    chmod 644 /var/www/pixel-hub/.env
+    
+    check_error "Création du fichier .env"
 }
 
 # Fonction pour configurer Apache
