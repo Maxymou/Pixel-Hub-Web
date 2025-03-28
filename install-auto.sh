@@ -417,38 +417,15 @@ configure_database() {
     read -p "Entrez le mot de passe MySQL root : " MYSQL_ROOT_PASSWORD
     read -p "Entrez le mot de passe pour l'utilisateur pixel_hub : " MYSQL_PASSWORD
     
-    # Vérifier que le mot de passe root est correct
-    if ! sudo mysql -u root -p"$MYSQL_ROOT_PASSWORD" -e "SELECT 1;" &> /dev/null; then
-        print_message "ERREUR: Mot de passe root incorrect ou MariaDB non démarré." "$RED"
-        print_message "Tentative de réinitialisation du mot de passe root..." "$YELLOW"
-        
-        # Arrêter MariaDB
-        sudo systemctl stop mariadb
-        
-        # Démarrer MariaDB en mode sans privilèges
-        sudo mysqld_safe --skip-grant-tables --skip-networking &
-        sleep 5
-        
-        # Réinitialiser le mot de passe root
-        sudo mysql -u root << MYSQL_RESET
-FLUSH PRIVILEGES;
+    # Configurer MariaDB de manière non interactive
+    sudo mysql -u root << MYSQL_CONFIG
 ALTER USER 'root'@'localhost' IDENTIFIED BY '$MYSQL_ROOT_PASSWORD';
+DELETE FROM mysql.user WHERE User='';
+DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost', '127.0.0.1', '::1');
+DROP DATABASE IF EXISTS test;
+DELETE FROM mysql.db WHERE Db='test' OR Db='test\\_%';
 FLUSH PRIVILEGES;
-MYSQL_RESET
-        
-        # Arrêter le serveur en mode sans privilèges
-        sudo killall mysqld
-        sleep 5
-        
-        # Redémarrer MariaDB normalement
-        sudo systemctl start mariadb
-        
-        # Vérifier à nouveau le mot de passe
-        if ! sudo mysql -u root -p"$MYSQL_ROOT_PASSWORD" -e "SELECT 1;" &> /dev/null; then
-            print_message "ERREUR: Impossible de configurer le mot de passe root." "$RED"
-            exit 1
-        fi
-    fi
+MYSQL_CONFIG
     
     # Créer la base de données et l'utilisateur
     sudo mysql -u root -p"$MYSQL_ROOT_PASSWORD" << MYSQL_SCRIPT
