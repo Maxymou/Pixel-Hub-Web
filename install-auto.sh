@@ -123,7 +123,8 @@ install_prerequisites() {
         libssl-dev \
         libffi-dev \
         python3-dev \
-        python3-pip
+        python3-pip \
+        bc
     check_error "Échec de l'installation des paquets essentiels"
     
     # Ajouter le dépôt PHP
@@ -186,7 +187,9 @@ configure_environment() {
     
     # Sauvegarder les configurations existantes
     backup_config "/etc/apache2/sites-available/pixel-hub.conf"
-    backup_config "/etc/php/conf.d/99-pixel-hub.ini"
+    
+    # Créer le répertoire de configuration PHP s'il n'existe pas
+    sudo mkdir -p /etc/php/conf.d
     
     # Configurer le fuseau horaire
     sudo timedatectl set-timezone Europe/Paris
@@ -439,12 +442,52 @@ install_application() {
     export COMPOSER_ALLOW_SUPERUSER=1
     
     # Nettoyer l'environnement Composer
-    rm -rf vendor
+    rm -rf vendor composer.lock
     composer clear-cache
     
-    # Installer toutes les dépendances en une seule fois
-    composer install --no-dev --optimize-autoloader --no-interaction
-    check_error "Échec de l'installation des dépendances Composer"
+    # Installer les dépendances une par une
+    print_message "Installation des dépendances principales..." "$YELLOW"
+    composer require vlucas/phpdotenv:^5.5
+    composer require monolog/monolog:^2.9
+    composer require firebase/php-jwt:^6.4
+    
+    # Installer les dépendances Symfony
+    print_message "Installation des dépendances Symfony..." "$YELLOW"
+    composer require symfony/http-foundation:^5.4
+    composer require symfony/routing:^5.4
+    composer require symfony/security-csrf:^5.4
+    composer require symfony/validator:^5.4
+    composer require symfony/process:^5.4
+    composer require symfony/console:^5.4
+    composer require symfony/yaml:^5.4
+    composer require symfony/cache:^5.4
+    composer require symfony/config:^5.4
+    composer require symfony/dependency-injection:^5.4
+    composer require symfony/event-dispatcher:^5.4
+    composer require symfony/filesystem:^5.4
+    composer require symfony/finder:^5.4
+    composer require symfony/http-kernel:^5.4
+    composer require symfony/mailer:^5.4
+    composer require symfony/messenger:^5.4
+    
+    # Installer les dépendances Doctrine
+    print_message "Installation des dépendances Doctrine..." "$YELLOW"
+    composer require doctrine/annotations:^1.13
+    composer require doctrine/cache:^1.11
+    composer require doctrine/collections:^1.6
+    composer require doctrine/common:^2.13
+    composer require doctrine/dbal:^2.13
+    composer require doctrine/deprecations:^0.5.3
+    composer require doctrine/doctrine-bundle:^2.7
+    composer require doctrine/doctrine-migrations-bundle:^3.2
+    composer require doctrine/event-manager:^1.1
+    composer require doctrine/inflector:^1.4
+    composer require doctrine/instantiator:^1.4
+    composer require doctrine/lexer:^1.2
+    composer require doctrine/orm:^2.11
+    composer require doctrine/persistence:^2.2
+    composer require doctrine/reflection:^1.2
+    composer require doctrine/sql-formatter:^1.1
     
     # Optimiser l'autoloader
     composer dump-autoload --optimize --no-dev
