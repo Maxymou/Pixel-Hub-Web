@@ -209,7 +209,101 @@ php artisan migrate
 
 ### Désinstallation
 ```bash
-sudo ./scripts/uninstall.sh
+curl -s https://raw.githubusercontent.com/Maxymou/pixel-hub-web/main/scripts/uninstall.sh | sudo bash
+```
+
+Cette commande va :
+1. Arrêter les services Apache et MySQL
+2. Supprimer l'application et ses fichiers
+3. Supprimer la base de données
+4. Supprimer les configurations Apache
+5. Supprimer les configurations PHP
+6. Supprimer les dépendances installées
+
+### Désinstallation manuelle
+
+Si vous préférez désinstaller manuellement, exécutez ces commandes :
+
+```bash
+# Arrêter les services
+sudo systemctl stop apache2
+sudo systemctl stop mysql
+
+# Supprimer l'application
+sudo rm -rf /var/www/pixel-hub
+
+# Supprimer la base de données
+sudo mysql -e "DROP DATABASE IF EXISTS pixel_hub; DROP USER IF EXISTS 'pixel_hub'@'localhost';"
+
+# Supprimer les configurations
+sudo rm -f /etc/apache2/sites-available/pixel-hub.conf
+sudo rm -f /etc/php/8.1/apache2/conf.d/99-pixel-hub.ini
+sudo rm -f /etc/security/limits.d/pixel-hub.conf
+
+# Désinstaller les paquets
+sudo apt-get remove -y \
+    php8.1 \
+    php8.1-cli \
+    php8.1-common \
+    php8.1-mysql \
+    php8.1-zip \
+    php8.1-gd \
+    php8.1-mbstring \
+    php8.1-curl \
+    php8.1-xml \
+    php8.1-bcmath \
+    php8.1-json \
+    php8.1-opcache \
+    php8.1-intl \
+    php8.1-ldap \
+    php8.1-redis \
+    php8.1-imagick \
+    mysql-server \
+    apache2
+
+# Supprimer les fichiers de configuration restants
+sudo apt-get purge -y \
+    php8.1 \
+    php8.1-cli \
+    php8.1-common \
+    php8.1-mysql \
+    php8.1-zip \
+    php8.1-gd \
+    php8.1-mbstring \
+    php8.1-curl \
+    php8.1-xml \
+    php8.1-bcmath \
+    php8.1-json \
+    php8.1-opcache \
+    php8.1-intl \
+    php8.1-ldap \
+    php8.1-redis \
+    php8.1-imagick \
+    mysql-server \
+    apache2
+
+# Nettoyer les paquets non utilisés
+sudo apt-get autoremove -y
+sudo apt-get clean
+
+# Supprimer le dépôt PHP
+sudo rm -f /etc/apt/sources.list.d/php.list
+sudo rm -f /etc/apt/trusted.gpg.d/php.gpg
+```
+
+### Vérification de la désinstallation
+
+Pour vérifier que tout a été correctement supprimé :
+
+```bash
+# Vérifier que les services sont arrêtés
+sudo systemctl status apache2
+sudo systemctl status mysql
+
+# Vérifier que les fichiers sont supprimés
+ls -la /var/www/pixel-hub 2>/dev/null || echo "Le dossier de l'application a été supprimé"
+ls -la /etc/apache2/sites-available/pixel-hub.conf 2>/dev/null || echo "La configuration Apache a été supprimée"
+ls -la /etc/php/8.1/apache2/conf.d/99-pixel-hub.ini 2>/dev/null || echo "La configuration PHP a été supprimée"
 ```
 
 ## Contribution

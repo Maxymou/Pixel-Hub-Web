@@ -168,7 +168,7 @@ install_application() {
     sudo chown -R $USER:$USER /var/www/pixel-hub
     
     # Cloner le dépôt
-    git clone https://github.com/votre-username/pixel-hub-web.git /var/www/pixel-hub
+    git clone https://github.com/Maxymou/pixel-hub-web.git /var/www/pixel-hub
     
     # Aller dans le répertoire
     cd /var/www/pixel-hub
