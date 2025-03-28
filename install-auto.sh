@@ -384,14 +384,54 @@ install_application() {
     print_message "Installation des dépendances avec Composer..." "$YELLOW"
     export COMPOSER_ALLOW_SUPERUSER=1
     
-    # Supprimer le fichier composer.lock s'il existe
-    if [ -f "composer.lock" ]; then
-        rm composer.lock
-    fi
+    # Nettoyer l'environnement Composer
+    rm -rf vendor composer.lock
+    composer clear-cache
     
-    # Installer les dépendances
-    composer install --no-dev --optimize-autoloader --no-interaction
-    check_error "Échec de l'installation des dépendances Composer"
+    # Installer les dépendances une par une
+    print_message "Installation des dépendances principales..." "$YELLOW"
+    composer require vlucas/phpdotenv:^5.5 --no-interaction
+    composer require monolog/monolog:^2.9 --no-interaction
+    composer require firebase/php-jwt:^6.4 --no-interaction
+    
+    print_message "Installation des dépendances Symfony..." "$YELLOW"
+    composer require symfony/http-foundation:^5.4 --no-interaction
+    composer require symfony/routing:^5.4 --no-interaction
+    composer require symfony/security-csrf:^5.4 --no-interaction
+    composer require symfony/validator:^5.4 --no-interaction
+    composer require symfony/process:^5.4 --no-interaction
+    composer require symfony/console:^5.4 --no-interaction
+    composer require symfony/yaml:^5.4 --no-interaction
+    composer require symfony/cache:^5.4 --no-interaction
+    composer require symfony/config:^5.4 --no-interaction
+    composer require symfony/dependency-injection:^5.4 --no-interaction
+    composer require symfony/event-dispatcher:^5.4 --no-interaction
+    composer require symfony/filesystem:^5.4 --no-interaction
+    composer require symfony/finder:^5.4 --no-interaction
+    composer require symfony/http-kernel:^5.4 --no-interaction
+    composer require symfony/mailer:^5.4 --no-interaction
+    composer require symfony/messenger:^5.4 --no-interaction
+    
+    print_message "Installation des dépendances Doctrine..." "$YELLOW"
+    composer require doctrine/annotations:^2.0 --no-interaction
+    composer require doctrine/cache:^2.0 --no-interaction
+    composer require doctrine/collections:^2.0 --no-interaction
+    composer require doctrine/common:^3.0 --no-interaction
+    composer require doctrine/dbal:^3.0 --no-interaction
+    composer require doctrine/deprecations:^1.0 --no-interaction
+    composer require doctrine/doctrine-bundle:^2.0 --no-interaction
+    composer require doctrine/doctrine-migrations-bundle:^3.0 --no-interaction
+    composer require doctrine/event-manager:^2.0 --no-interaction
+    composer require doctrine/inflector:^2.0 --no-interaction
+    composer require doctrine/instantiator:^2.0 --no-interaction
+    composer require doctrine/lexer:^2.0 --no-interaction
+    composer require doctrine/orm:^2.0 --no-interaction
+    composer require doctrine/persistence:^3.0 --no-interaction
+    composer require doctrine/reflection:^2.0 --no-interaction
+    composer require doctrine/sql-formatter:^1.0 --no-interaction
+    
+    # Optimiser l'autoloader
+    composer dump-autoload --optimize --no-dev
     
     # Configurer la base de données
     read -p "Entrez le mot de passe MySQL root : " MYSQL_ROOT_PASSWORD
