@@ -450,17 +450,6 @@ MYSQL_RESET
         fi
     fi
     
-    # Sécuriser l'installation de MariaDB
-    sudo mysql_secure_installation << MYSQL_SECURE
-y
-$MYSQL_ROOT_PASSWORD
-$MYSQL_ROOT_PASSWORD
-y
-y
-y
-y
-MYSQL_SECURE
-    
     # Créer la base de données et l'utilisateur
     sudo mysql -u root -p"$MYSQL_ROOT_PASSWORD" << MYSQL_SCRIPT
 CREATE DATABASE IF NOT EXISTS pixel_hub CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -492,7 +481,11 @@ MYSQL_SCRIPT
         
         # Afficher les logs MariaDB
         print_message "Dernières lignes des logs MariaDB :" "$YELLOW"
-        sudo tail -n 50 /var/log/mysql/error.log
+        if [ -f "/var/log/mysql/error.log" ]; then
+            sudo tail -n 50 /var/log/mysql/error.log
+        else
+            print_message "Le fichier de log n'existe pas." "$RED"
+        fi
         
         exit 1
     fi
