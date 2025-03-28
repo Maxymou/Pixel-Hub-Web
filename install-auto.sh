@@ -34,27 +34,65 @@ check_error() {
     fi
 }
 
+# Fonction pour vérifier la connexion internet
+check_internet() {
+    print_message "Vérification de la connexion internet..." "$YELLOW"
+    if ! ping -c 1 google.com &> /dev/null; then
+        print_message "ERREUR: Pas de connexion internet" "$RED"
+        exit 1
+    fi
+    print_message "Connexion internet vérifiée." "$GREEN"
+}
+
+# Fonction pour vérifier la version de PHP
+check_php_version() {
+    print_message "Vérification de la version de PHP..." "$YELLOW"
+    PHP_VERSION=$(php -v | head -n 1 | cut -d " " -f 2 | cut -d "." -f 1,2)
+    if (( $(echo "$PHP_VERSION < 7.4" | bc -l) )); then
+        print_message "ERREUR: PHP 7.4 ou supérieur est requis" "$RED"
+        exit 1
+    fi
+    print_message "Version de PHP vérifiée : $PHP_VERSION" "$GREEN"
+}
+
+# Fonction pour sauvegarder une configuration
+backup_config() {
+    if [ -f "$1" ]; then
+        print_message "Sauvegarde de $1..." "$YELLOW"
+        cp "$1" "$1.bak"
+        print_message "Configuration sauvegardée." "$GREEN"
+    fi
+}
+
 # Fonction pour vérifier les prérequis
 check_prerequisites() {
     print_message "Vérification des prérequis..." "$YELLOW"
     
-    # Vérifier si le script est exécuté en tant que root
-    if [ "$EUID" -ne 0 ]; then 
-        print_message "Ce script doit être exécuté en tant que root (sudo)" "$RED"
-        exit 1
-    fi
+    # Vérifier la connexion internet
+    check_internet
+    
+    # Vérifier la version de PHP
+    check_php_version
+    
+    # Vérifier les commandes requises
+    for cmd in php mysql apache2ctl composer git; do
+        if ! command -v $cmd &> /dev/null; then
+            print_message "ERREUR: $cmd n'est pas installé" "$RED"
+            exit 1
+        fi
+    done
     
     # Vérifier l'espace disque
-    FREE_SPACE=$(df -m / | awk 'NR==2 {print $4}')
-    if [ "$FREE_SPACE" -lt 1000 ]; then
-        print_message "ERREUR: Espace disque insuffisant. Au moins 1GB est requis." "$RED"
+    DISK_SPACE=$(df -m / | awk 'NR==2 {print $4}')
+    if [ "$DISK_SPACE" -lt 1000 ]; then
+        print_message "ERREUR: Moins de 1GB d'espace disque disponible" "$RED"
         exit 1
     fi
     
     # Vérifier la mémoire
-    TOTAL_MEM=$(free -m | awk '/^Mem:/{print $2}')
-    if [ "$TOTAL_MEM" -lt 512 ]; then
-        print_message "ERREUR: Mémoire insuffisante. Au moins 512MB est requis." "$RED"
+    MEMORY=$(free -m | awk 'NR==2 {print $2}')
+    if [ "$MEMORY" -lt 512 ]; then
+        print_message "ERREUR: Moins de 512MB de RAM disponible" "$RED"
         exit 1
     fi
     
@@ -146,11 +184,15 @@ EOL
 configure_environment() {
     print_message "Configuration de l'environnement..." "$YELLOW"
     
+    # Sauvegarder les configurations existantes
+    backup_config "/etc/apache2/sites-available/pixel-hub.conf"
+    backup_config "/etc/php/conf.d/99-pixel-hub.ini"
+    
     # Configurer le fuseau horaire
     sudo timedatectl set-timezone Europe/Paris
     
     # Configurer les limites système
-    sudo tee /etc/security/limits.d/pixel-hub.conf > /dev/null << EOL
+    cat > /etc/security/limits.d/pixel-hub.conf << EOL
 www-data soft nofile 65535
 www-data hard nofile 65535
 www-data soft nproc 65535
@@ -162,42 +204,15 @@ EOL
     sudo a2enmod ssl
     sudo a2enmod headers
     
-    # Configurer PHP avec des paramètres optimisés pour Raspberry Pi
-    if is_raspberry_pi; then
-        # Optimisations spécifiques pour Raspberry Pi
-        sudo tee /etc/php/conf.d/99-pixel-hub.ini > /dev/null << EOL
-memory_limit = 128M
-upload_max_filesize = 32M
-post_max_size = 32M
-max_execution_time = 300
-max_input_time = 300
-date.timezone = Europe/Paris
-opcache.enable = 1
-opcache.memory_consumption = 64
-opcache.interned_strings_buffer = 4
-opcache.max_accelerated_files = 2000
-opcache.revalidate_freq = 60
-opcache.fast_shutdown = 1
-opcache.enable_cli = 0
-EOL
-    else
-        # Configuration standard pour autres systèmes
-        sudo tee /etc/php/8.1/apache2/conf.d/99-pixel-hub.ini > /dev/null << EOL
+    # Configurer PHP
+    cat > /etc/php/conf.d/99-pixel-hub.ini << EOL
 memory_limit = 256M
+max_execution_time = 60
 upload_max_filesize = 64M
 post_max_size = 64M
-max_execution_time = 300
-max_input_time = 300
-date.timezone = Europe/Paris
-opcache.enable = 1
-opcache.memory_consumption = 128
-opcache.interned_strings_buffer = 8
-opcache.max_accelerated_files = 4000
-opcache.revalidate_freq = 60
-opcache.fast_shutdown = 1
-opcache.enable_cli = 0
+max_input_vars = 3000
+date.timezone = "Europe/Paris"
 EOL
-    fi
     
     print_message "Environnement configuré avec succès." "$GREEN"
 }
@@ -301,22 +316,22 @@ EOL
         "symfony/web-link": "^5.4",
         "symfony/workflow": "^5.4",
         "twig/twig": "^3.0",
-        "doctrine/annotations": "^2.0",
-        "doctrine/cache": "^2.0",
-        "doctrine/collections": "^2.0",
-        "doctrine/common": "^3.0",
-        "doctrine/dbal": "^3.0",
-        "doctrine/deprecations": "^1.0",
-        "doctrine/doctrine-bundle": "^2.0",
-        "doctrine/doctrine-migrations-bundle": "^3.0",
-        "doctrine/event-manager": "^2.0",
-        "doctrine/inflector": "^2.0",
-        "doctrine/instantiator": "^2.0",
-        "doctrine/lexer": "^2.0",
-        "doctrine/orm": "^2.0",
-        "doctrine/persistence": "^3.0",
-        "doctrine/reflection": "^2.0",
-        "doctrine/sql-formatter": "^1.0"
+        "doctrine/annotations": "^1.13",
+        "doctrine/cache": "^1.11",
+        "doctrine/collections": "^1.6",
+        "doctrine/common": "^2.13",
+        "doctrine/dbal": "^2.13",
+        "doctrine/deprecations": "^0.5.3",
+        "doctrine/doctrine-bundle": "^2.7",
+        "doctrine/doctrine-migrations-bundle": "^3.2",
+        "doctrine/event-manager": "^1.1",
+        "doctrine/inflector": "^1.4",
+        "doctrine/instantiator": "^1.4",
+        "doctrine/lexer": "^1.2",
+        "doctrine/orm": "^2.11",
+        "doctrine/persistence": "^2.2",
+        "doctrine/reflection": "^1.2",
+        "doctrine/sql-formatter": "^1.1"
     },
     "autoload": {
         "psr-4": {
@@ -388,47 +403,9 @@ install_application() {
     rm -rf vendor composer.lock
     composer clear-cache
     
-    # Installer les dépendances une par une
-    print_message "Installation des dépendances principales..." "$YELLOW"
-    composer require vlucas/phpdotenv:^5.5 --no-interaction
-    composer require monolog/monolog:^2.9 --no-interaction
-    composer require firebase/php-jwt:^6.4 --no-interaction
-    
-    print_message "Installation des dépendances Symfony..." "$YELLOW"
-    composer require symfony/http-foundation:^5.4 --no-interaction
-    composer require symfony/routing:^5.4 --no-interaction
-    composer require symfony/security-csrf:^5.4 --no-interaction
-    composer require symfony/validator:^5.4 --no-interaction
-    composer require symfony/process:^5.4 --no-interaction
-    composer require symfony/console:^5.4 --no-interaction
-    composer require symfony/yaml:^5.4 --no-interaction
-    composer require symfony/cache:^5.4 --no-interaction
-    composer require symfony/config:^5.4 --no-interaction
-    composer require symfony/dependency-injection:^5.4 --no-interaction
-    composer require symfony/event-dispatcher:^5.4 --no-interaction
-    composer require symfony/filesystem:^5.4 --no-interaction
-    composer require symfony/finder:^5.4 --no-interaction
-    composer require symfony/http-kernel:^5.4 --no-interaction
-    composer require symfony/mailer:^5.4 --no-interaction
-    composer require symfony/messenger:^5.4 --no-interaction
-    
-    print_message "Installation des dépendances Doctrine..." "$YELLOW"
-    composer require doctrine/annotations:^2.0 --no-interaction
-    composer require doctrine/cache:^2.0 --no-interaction
-    composer require doctrine/collections:^2.0 --no-interaction
-    composer require doctrine/common:^3.0 --no-interaction
-    composer require doctrine/dbal:^3.0 --no-interaction
-    composer require doctrine/deprecations:^1.0 --no-interaction
-    composer require doctrine/doctrine-bundle:^2.0 --no-interaction
-    composer require doctrine/doctrine-migrations-bundle:^3.0 --no-interaction
-    composer require doctrine/event-manager:^2.0 --no-interaction
-    composer require doctrine/inflector:^2.0 --no-interaction
-    composer require doctrine/instantiator:^2.0 --no-interaction
-    composer require doctrine/lexer:^2.0 --no-interaction
-    composer require doctrine/orm:^2.0 --no-interaction
-    composer require doctrine/persistence:^3.0 --no-interaction
-    composer require doctrine/reflection:^2.0 --no-interaction
-    composer require doctrine/sql-formatter:^1.0 --no-interaction
+    # Installer toutes les dépendances en une seule fois
+    composer install --no-dev --optimize-autoloader --no-interaction
+    check_error "Échec de l'installation des dépendances Composer"
     
     # Optimiser l'autoloader
     composer dump-autoload --optimize --no-dev
@@ -483,14 +460,35 @@ EOL
     print_message "Application installée avec succès." "$GREEN"
 }
 
+# Fonction pour obtenir l'adresse IP
+get_ip_address() {
+    if is_raspberry_pi; then
+        # Pour Raspberry Pi, on utilise eth0 ou wlan0
+        if ip addr show eth0 &> /dev/null; then
+            IP=$(ip addr show eth0 | grep "inet\b" | awk '{print $2}' | cut -d/ -f1)
+        elif ip addr show wlan0 &> /dev/null; then
+            IP=$(ip addr show wlan0 | grep "inet\b" | awk '{print $2}' | cut -d/ -f1)
+        else
+            IP=$(hostname -I | awk '{print $1}')
+        fi
+    else
+        IP=$(hostname -I | awk '{print $1}')
+    fi
+    echo "$IP"
+}
+
 # Fonction pour configurer Apache
 configure_apache() {
     print_message "Configuration d'Apache..." "$YELLOW"
+    
+    # Obtenir l'adresse IP
+    IP_ADDRESS=$(get_ip_address)
     
     # Créer la configuration Apache
     sudo tee /etc/apache2/sites-available/pixel-hub.conf > /dev/null << EOL
 <VirtualHost *:80>
     ServerName localhost
+    ServerAlias $IP_ADDRESS
     DocumentRoot /var/www/pixel-hub/public
     
     <Directory /var/www/pixel-hub/public>
@@ -521,6 +519,108 @@ restart_services() {
     print_message "Services redémarrés avec succès." "$GREEN"
 }
 
+# Fonction pour générer le récapitulatif
+generate_summary() {
+    print_message "\n=== Récapitulatif de l'installation ===" "$YELLOW"
+    
+    # Informations système
+    print_message "\nInformations système :" "$GREEN"
+    echo "Système : $(uname -a)"
+    echo "PHP Version : $(php -v | head -n 1)"
+    echo "MySQL Version : $(mysql --version)"
+    echo "Apache Version : $(apache2 -v | head -n 1)"
+    echo "Composer Version : $(composer --version)"
+    
+    # Adresses d'accès
+    print_message "\nAdresses d'accès :" "$GREEN"
+    echo "Local : http://localhost"
+    echo "IP : http://$(get_ip_address)"
+    
+    # Vérification des services
+    print_message "\nÉtat des services :" "$GREEN"
+    if systemctl is-active --quiet apache2; then
+        echo "Apache : ✅ En cours d'exécution"
+    else
+        echo "Apache : ❌ Arrêté"
+    fi
+    
+    if systemctl is-active --quiet mariadb; then
+        echo "MariaDB : ✅ En cours d'exécution"
+    else
+        echo "MariaDB : ❌ Arrêté"
+    fi
+    
+    # Vérification des répertoires
+    print_message "\nVérification des répertoires :" "$GREEN"
+    DIRS=(
+        "/var/www/pixel-hub"
+        "/var/www/pixel-hub/storage"
+        "/var/www/pixel-hub/storage/logs"
+        "/var/www/pixel-hub/storage/framework/cache"
+        "/var/www/pixel-hub/storage/framework/sessions"
+        "/var/www/pixel-hub/storage/framework/views"
+        "/var/www/pixel-hub/bootstrap/cache"
+        "/var/www/pixel-hub/public/uploads"
+    )
+    
+    for dir in "${DIRS[@]}"; do
+        if [ -d "$dir" ]; then
+            echo "$dir : ✅ Existe"
+            if [ -w "$dir" ]; then
+                echo "  Permissions : ✅ Écriture autorisée"
+            else
+                echo "  Permissions : ❌ Pas d'écriture"
+            fi
+        else
+            echo "$dir : ❌ Manquant"
+        fi
+    done
+    
+    # Vérification des fichiers de configuration
+    print_message "\nVérification des fichiers de configuration :" "$GREEN"
+    FILES=(
+        "/etc/apache2/sites-available/pixel-hub.conf"
+        "/etc/php/conf.d/99-pixel-hub.ini"
+        "/var/www/pixel-hub/.env"
+        "/var/www/pixel-hub/composer.json"
+        "/var/www/pixel-hub/config/admin.php"
+    )
+    
+    for file in "${FILES[@]}"; do
+        if [ -f "$file" ]; then
+            echo "$file : ✅ Existe"
+        else
+            echo "$file : ❌ Manquant"
+        fi
+    done
+    
+    # Vérification de la base de données
+    print_message "\nVérification de la base de données :" "$GREEN"
+    if mysql -u pixel_hub -p"$MYSQL_PASSWORD" -e "USE pixel_hub;" &> /dev/null; then
+        echo "Base de données pixel_hub : ✅ Accessible"
+        echo "Utilisateur pixel_hub : ✅ Accessible"
+    else
+        echo "Base de données pixel_hub : ❌ Non accessible"
+        echo "Utilisateur pixel_hub : ❌ Non accessible"
+    fi
+    
+    # Vérification des dépendances Composer
+    print_message "\nVérification des dépendances Composer :" "$GREEN"
+    if [ -d "/var/www/pixel-hub/vendor" ]; then
+        echo "Dossier vendor : ✅ Existe"
+        if [ -f "/var/www/pixel-hub/composer.lock" ]; then
+            echo "Fichier composer.lock : ✅ Existe"
+        else
+            echo "Fichier composer.lock : ❌ Manquant"
+        fi
+    else
+        echo "Dossier vendor : ❌ Manquant"
+    fi
+    
+    print_message "\n=== Fin du récapitulatif ===" "$YELLOW"
+    print_message "\nSi vous rencontrez des problèmes, veuillez fournir ce récapitulatif pour faciliter le diagnostic." "$YELLOW"
+}
+
 # Fonction principale
 main() {
     print_message "Démarrage de l'installation automatique de Pixel Hub Web..." "$YELLOW"
@@ -543,10 +643,17 @@ main() {
     # Redémarrer les services
     restart_services
     
+    # Obtenir l'adresse IP
+    IP_ADDRESS=$(get_ip_address)
+    
     print_message "Installation terminée avec succès !" "$GREEN"
-    print_message "Vous pouvez maintenant accéder à Pixel Hub Web à l'adresse : http://localhost" "$GREEN"
-    print_message "Si vous rencontrez des problèmes, consultez les logs :" "$YELLOW"
-    print_message "sudo tail -f /var/log/apache2/pixel-hub-error.log" "$YELLOW"
+    print_message "Vous pouvez maintenant accéder à l'application via :" "$GREEN"
+    print_message "http://localhost" "$YELLOW"
+    print_message "ou" "$YELLOW"
+    print_message "http://$IP_ADDRESS" "$YELLOW"
+    
+    # Générer le récapitulatif
+    generate_summary
 }
 
 # Exécuter la fonction principale
