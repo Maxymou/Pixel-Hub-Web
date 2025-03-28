@@ -273,25 +273,41 @@ EOL
 install_application() {
     print_message "Installation de l'application..." "$YELLOW"
     
-    # Créer le répertoire de l'application
+    # Supprimer le répertoire existant s'il existe
     if [ -d "/var/www/pixel-hub" ]; then
         print_message "Le répertoire /var/www/pixel-hub existe déjà. Suppression..." "$YELLOW"
         sudo rm -rf /var/www/pixel-hub
     fi
     
+    # Créer un répertoire temporaire
+    TEMP_DIR=$(mktemp -d)
+    print_message "Création d'un répertoire temporaire..." "$YELLOW"
+    
+    # Cloner le dépôt dans le répertoire temporaire
+    print_message "Clonage du dépôt..." "$YELLOW"
+    git clone https://github.com/Maxymou/pixel-hub-web.git "$TEMP_DIR"
+    check_error "Échec du clonage du dépôt"
+    
+    # Créer le répertoire final
     sudo mkdir -p /var/www/pixel-hub
     check_error "Échec de la création du répertoire"
     
-    sudo chown -R $USER:$USER /var/www/pixel-hub
-    check_error "Échec de la modification des permissions"
+    # Copier les fichiers du répertoire temporaire vers le répertoire final
+    print_message "Copie des fichiers..." "$YELLOW"
+    sudo cp -r "$TEMP_DIR"/* /var/www/pixel-hub/
+    check_error "Échec de la copie des fichiers"
     
-    # Aller dans le répertoire
+    # Supprimer le répertoire temporaire
+    rm -rf "$TEMP_DIR"
+    
+    # Aller dans le répertoire de l'application
     cd /var/www/pixel-hub
     
-    # Cloner le dépôt
-    print_message "Clonage du dépôt..." "$YELLOW"
-    git clone https://github.com/Maxymou/pixel-hub-web.git .
-    check_error "Échec du clonage du dépôt"
+    # Configurer les permissions
+    sudo chown -R www-data:www-data .
+    sudo chmod -R 755 .
+    sudo chmod -R 775 storage bootstrap/cache
+    sudo chmod -R 775 public/uploads
     
     # Installer les dépendances avec Composer
     print_message "Installation des dépendances avec Composer..." "$YELLOW"
@@ -324,12 +340,6 @@ MYSQL_SCRIPT
     
     # Mettre à jour le fichier .env
     sed -i "s/DB_PASSWORD=.*/DB_PASSWORD=$MYSQL_PASSWORD/" .env
-    
-    # Configurer les permissions
-    sudo chown -R www-data:www-data .
-    sudo chmod -R 755 .
-    sudo chmod -R 775 storage bootstrap/cache
-    sudo chmod -R 775 public/uploads
     
     # Générer la clé d'application
     php -r "echo bin2hex(random_bytes(32));" > .env.key
