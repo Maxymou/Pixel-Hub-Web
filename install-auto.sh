@@ -445,49 +445,10 @@ install_application() {
     rm -rf vendor composer.lock
     composer clear-cache
     
-    # Installer les dépendances une par une
-    print_message "Installation des dépendances principales..." "$YELLOW"
-    composer require vlucas/phpdotenv:^5.5
-    composer require monolog/monolog:^2.9
-    composer require firebase/php-jwt:^6.4
-    
-    # Installer les dépendances Symfony
-    print_message "Installation des dépendances Symfony..." "$YELLOW"
-    composer require symfony/http-foundation:^5.4
-    composer require symfony/routing:^5.4
-    composer require symfony/security-csrf:^5.4
-    composer require symfony/validator:^5.4
-    composer require symfony/process:^5.4
-    composer require symfony/console:^5.4
-    composer require symfony/yaml:^5.4
-    composer require symfony/cache:^5.4
-    composer require symfony/config:^5.4
-    composer require symfony/dependency-injection:^5.4
-    composer require symfony/event-dispatcher:^5.4
-    composer require symfony/filesystem:^5.4
-    composer require symfony/finder:^5.4
-    composer require symfony/http-kernel:^5.4
-    composer require symfony/mailer:^5.4
-    composer require symfony/messenger:^5.4
-    
-    # Installer les dépendances Doctrine
-    print_message "Installation des dépendances Doctrine..." "$YELLOW"
-    composer require doctrine/annotations:^1.13
-    composer require doctrine/cache:^1.11
-    composer require doctrine/collections:^1.6
-    composer require doctrine/common:^2.13
-    composer require doctrine/dbal:^2.13
-    composer require doctrine/deprecations:^0.5.3
-    composer require doctrine/doctrine-bundle:^2.7
-    composer require doctrine/doctrine-migrations-bundle:^3.2
-    composer require doctrine/event-manager:^1.1
-    composer require doctrine/inflector:^1.4
-    composer require doctrine/instantiator:^1.4
-    composer require doctrine/lexer:^1.2
-    composer require doctrine/orm:^2.11
-    composer require doctrine/persistence:^2.2
-    composer require doctrine/reflection:^1.2
-    composer require doctrine/sql-formatter:^1.1
+    # Installer les dépendances en utilisant composer.json
+    print_message "Installation des dépendances..." "$YELLOW"
+    composer install --no-dev --optimize-autoloader --no-interaction
+    check_error "Échec de l'installation des dépendances Composer"
     
     # Optimiser l'autoloader
     composer dump-autoload --optimize --no-dev
@@ -596,12 +557,19 @@ EOF
 create_env_file() {
     print_message "Création du fichier .env..." "$YELLOW"
     
+    # Générer la clé d'application
+    APP_KEY=$(php -r "echo base64_encode(random_bytes(32));")
+    
+    # Obtenir l'adresse IP
+    IP_ADDRESS=$(get_ip_address)
+    
+    # Créer le fichier .env
     cat > /var/www/pixel-hub/.env << EOF
 APP_NAME=PixelHub
 APP_ENV=production
-APP_KEY=
+APP_KEY=$APP_KEY
 APP_DEBUG=false
-APP_URL=http://\$(get_ip_address)
+APP_URL=http://$IP_ADDRESS
 
 LOG_CHANNEL=stack
 LOG_DEPRECATIONS_CHANNEL=null
@@ -621,12 +589,6 @@ QUEUE_CONNECTION=sync
 SESSION_DRIVER=file
 SESSION_LIFETIME=120
 EOF
-    
-    # Générer la clé d'application
-    cd /var/www/pixel-hub
-    php -r "echo base64_encode(random_bytes(32));" > .env.key
-    sed -i "s/APP_KEY=/APP_KEY=$(cat .env.key)/" .env
-    rm .env.key
     
     chown www-data:www-data /var/www/pixel-hub/.env
     chmod 644 /var/www/pixel-hub/.env
