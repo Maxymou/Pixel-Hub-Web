@@ -503,7 +503,33 @@ install_application() {
     
     # Installer les dépendances en utilisant composer.json
     print_message "Installation des dépendances..." "$YELLOW"
-    composer install --no-dev --optimize-autoloader --no-interaction
+    
+    # Créer un fichier composer.lock vide
+    cat > composer.lock << EOL
+{
+    "_readme": [
+        "This file locks the dependencies of your project to a known state",
+        "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
+        "This file is @generated automatically"
+    ],
+    "content-hash": "generated",
+    "packages": [],
+    "packages-dev": [],
+    "aliases": [],
+    "minimum-stability": "stable",
+    "stability-flags": [],
+    "prefer-stable": false,
+    "prefer-lowest": false,
+    "platform": {
+        "php": ">=7.4"
+    },
+    "platform-dev": [],
+    "plugin-api-version": "2.0.0"
+}
+EOL
+    
+    # Installer les dépendances
+    composer update --no-dev --optimize-autoloader --no-interaction
     check_error "Échec de l'installation des dépendances Composer"
     
     # Optimiser l'autoloader
