@@ -303,6 +303,15 @@ install_application() {
     # Aller dans le répertoire de l'application
     cd /var/www/pixel-hub
     
+    # Créer les répertoires nécessaires
+    print_message "Création des répertoires nécessaires..." "$YELLOW"
+    sudo mkdir -p storage/logs
+    sudo mkdir -p storage/framework/cache
+    sudo mkdir -p storage/framework/sessions
+    sudo mkdir -p storage/framework/views
+    sudo mkdir -p bootstrap/cache
+    sudo mkdir -p public/uploads
+    
     # Configurer les permissions
     sudo chown -R www-data:www-data .
     sudo chmod -R 755 .
@@ -312,6 +321,13 @@ install_application() {
     # Installer les dépendances avec Composer
     print_message "Installation des dépendances avec Composer..." "$YELLOW"
     export COMPOSER_ALLOW_SUPERUSER=1
+    
+    # Supprimer le fichier composer.lock s'il existe
+    if [ -f "composer.lock" ]; then
+        rm composer.lock
+    fi
+    
+    # Installer les dépendances
     composer install --no-dev --optimize-autoloader --no-interaction
     check_error "Échec de l'installation des dépendances Composer"
     
