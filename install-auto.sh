@@ -133,6 +133,12 @@ install_prerequisites() {
     sudo php composer-setup.php --install-dir=/usr/local/bin --filename=composer
     rm composer-setup.php
     
+    # Configurer Composer pour permettre l'exécution en tant que root
+    export COMPOSER_ALLOW_SUPERUSER=1
+    sudo tee /etc/environment.d/composer.conf > /dev/null << EOL
+COMPOSER_ALLOW_SUPERUSER=1
+EOL
+    
     print_message "Prérequis installés avec succès." "$GREEN"
 }
 
@@ -196,6 +202,73 @@ EOL
     print_message "Environnement configuré avec succès." "$GREEN"
 }
 
+# Fonction pour créer la structure du projet
+create_project_structure() {
+    print_message "Création de la structure du projet..." "$YELLOW"
+    
+    # Créer les répertoires nécessaires
+    mkdir -p storage/logs
+    mkdir -p storage/framework/cache
+    mkdir -p storage/framework/sessions
+    mkdir -p storage/framework/views
+    mkdir -p bootstrap/cache
+    mkdir -p public/uploads
+    
+    # Créer le fichier .env de base
+    cat > .env << EOL
+APP_NAME=PixelHub
+APP_ENV=local
+APP_KEY=
+APP_DEBUG=true
+APP_URL=http://localhost
+
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=pixel_hub
+DB_USERNAME=pixel_hub
+DB_PASSWORD=
+
+LOG_CHANNEL=stack
+CACHE_DRIVER=file
+SESSION_DRIVER=file
+QUEUE_CONNECTION=sync
+EOL
+    
+    # Créer le fichier composer.json de base
+    cat > composer.json << EOL
+{
+    "name": "maxymou/pixel-hub-web",
+    "description": "Application web responsive pour gérer et lancer des applications et jeux",
+    "type": "project",
+    "require": {
+        "php": ">=7.4",
+        "ext-json": "*",
+        "ext-pdo": "*",
+        "ext-mbstring": "*",
+        "ext-curl": "*",
+        "ext-gd": "*",
+        "ext-zip": "*",
+        "ext-bcmath": "*",
+        "ext-xml": "*",
+        "ext-intl": "*",
+        "ext-ldap": "*",
+        "ext-redis": "*",
+        "ext-imagick": "*"
+    },
+    "autoload": {
+        "psr-4": {
+            "App\\": "src/"
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}
+EOL
+    
+    print_message "Structure du projet créée avec succès." "$GREEN"
+}
+
 # Fonction pour installer l'application
 install_application() {
     print_message "Installation de l'application..." "$YELLOW"
@@ -207,24 +280,26 @@ install_application() {
     sudo chown -R $USER:$USER /var/www/pixel-hub
     check_error "Échec de la modification des permissions"
     
-    # Cloner le dépôt
-    if [ -d "/var/www/pixel-hub/.git" ]; then
-        print_message "Le dépôt existe déjà. Mise à jour..." "$YELLOW"
-        cd /var/www/pixel-hub
-        git pull
-    else
-        git clone https://github.com/Maxymou/pixel-hub-web.git /var/www/pixel-hub
-    fi
-    check_error "Échec du clonage du dépôt"
-    
     # Aller dans le répertoire
     cd /var/www/pixel-hub
     
-    # Installer les dépendances
-    composer install --no-dev --optimize-autoloader
+    # Créer la structure de base du projet
+    create_project_structure
     
-    # Copier le fichier .env
-    cp .env.example .env
+    # Cloner le dépôt
+    if [ -d ".git" ]; then
+        print_message "Le dépôt existe déjà. Mise à jour..." "$YELLOW"
+        git pull
+    else
+        git clone https://github.com/Maxymou/pixel-hub-web.git .
+    fi
+    check_error "Échec du clonage du dépôt"
+    
+    # Installer les dépendances avec Composer
+    print_message "Installation des dépendances avec Composer..." "$YELLOW"
+    export COMPOSER_ALLOW_SUPERUSER=1
+    composer install --no-dev --optimize-autoloader --no-interaction
+    check_error "Échec de l'installation des dépendances Composer"
     
     # Configurer la base de données
     read -p "Entrez le mot de passe MySQL root : " MYSQL_ROOT_PASSWORD
@@ -259,17 +334,25 @@ MYSQL_SCRIPT
     sudo chmod -R 775 public/uploads
     
     # Générer la clé d'application
-    php bin/console key:generate
-    
-    # Exécuter les migrations
-    php bin/console migrate
+    php -r "echo bin2hex(random_bytes(32));" > .env.key
+    sed -i "s/APP_KEY=.*/APP_KEY=$(cat .env.key)/" .env
+    rm .env.key
     
     # Créer l'utilisateur administrateur
     read -p "Entrez le nom d'utilisateur admin : " ADMIN_USERNAME
     read -s -p "Entrez le mot de passe admin : " ADMIN_PASSWORD
     echo
     
-    php bin/console user:create "$ADMIN_USERNAME" "$ADMIN_PASSWORD" --admin
+    # Créer le fichier de configuration de l'administrateur
+    mkdir -p config
+    cat > config/admin.php << EOL
+<?php
+return [
+    'username' => '$ADMIN_USERNAME',
+    'password' => password_hash('$ADMIN_PASSWORD', PASSWORD_DEFAULT),
+    'is_admin' => true
+];
+EOL
     
     print_message "Application installée avec succès." "$GREEN"
 }
