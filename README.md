@@ -7,7 +7,7 @@ Pixel Hub Web est une application web responsive permettant de gérer et lancer 
 Pour installer Pixel Hub Web en une seule commande, exécutez :
 
 ```bash
-curl -s https://raw.githubusercontent.com/votre-username/pixel-hub-web/main/install-auto.sh | sudo bash
+curl -s https://raw.githubusercontent.com/Maxymou/pixel-hub-web/main/install-auto.sh | sudo bash
 ```
 
 Cette commande va :
@@ -48,7 +48,7 @@ Suivez les instructions à l'écran pour compléter l'installation.
 
 3. **Installation de Pixel Hub Web**
    ```bash
-   curl -s https://raw.githubusercontent.com/votre-username/pixel-hub-web/main/install-auto.sh | sudo bash
+   curl -s https://raw.githubusercontent.com/Maxymou/pixel-hub-web/main/install-auto.sh | sudo bash
    ```
 
 4. **Configuration du réseau**
@@ -94,7 +94,7 @@ Si vous préférez une installation manuelle, suivez ces étapes :
 
 1. **Cloner le dépôt**
 ```bash
-git clone https://github.com/votre-username/pixel-hub-web.git
+git clone https://github.com/Maxymou/pixel-hub-web.git
 cd pixel-hub-web
 ```
 
