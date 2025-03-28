@@ -274,6 +274,11 @@ install_application() {
     print_message "Installation de l'application..." "$YELLOW"
     
     # Créer le répertoire de l'application
+    if [ -d "/var/www/pixel-hub" ]; then
+        print_message "Le répertoire /var/www/pixel-hub existe déjà. Suppression..." "$YELLOW"
+        sudo rm -rf /var/www/pixel-hub
+    fi
+    
     sudo mkdir -p /var/www/pixel-hub
     check_error "Échec de la création du répertoire"
     
@@ -283,16 +288,9 @@ install_application() {
     # Aller dans le répertoire
     cd /var/www/pixel-hub
     
-    # Créer la structure de base du projet
-    create_project_structure
-    
     # Cloner le dépôt
-    if [ -d ".git" ]; then
-        print_message "Le dépôt existe déjà. Mise à jour..." "$YELLOW"
-        git pull
-    else
-        git clone https://github.com/Maxymou/pixel-hub-web.git .
-    fi
+    print_message "Clonage du dépôt..." "$YELLOW"
+    git clone https://github.com/Maxymou/pixel-hub-web.git .
     check_error "Échec du clonage du dépôt"
     
     # Installer les dépendances avec Composer
