@@ -406,9 +406,19 @@ EOL
 configure_database() {
     print_message "Configuration de la base de données..." "$YELLOW"
     
+    # Démarrer MariaDB si ce n'est pas déjà fait
+    sudo systemctl start mariadb
+    sudo systemctl enable mariadb
+    
     # Demander les mots de passe
     read -p "Entrez le mot de passe MySQL root : " MYSQL_ROOT_PASSWORD
     read -p "Entrez le mot de passe pour l'utilisateur pixel_hub : " MYSQL_PASSWORD
+    
+    # Vérifier que le mot de passe root est correct
+    if ! sudo mysql -u root -p"$MYSQL_ROOT_PASSWORD" -e "SELECT 1;" &> /dev/null; then
+        print_message "ERREUR: Mot de passe root incorrect ou MariaDB non démarré." "$RED"
+        exit 1
+    fi
     
     # Sécuriser l'installation de MariaDB
     sudo mysql_secure_installation << MYSQL_SECURE
@@ -432,8 +442,28 @@ MYSQL_SCRIPT
     # Vérifier que la base de données est accessible
     if ! mysql -u pixel_hub -p"$MYSQL_PASSWORD" -e "USE pixel_hub;" &> /dev/null; then
         print_message "ERREUR: Impossible d'accéder à la base de données." "$RED"
+        print_message "Vérification des étapes..." "$YELLOW"
+        
+        # Vérifier si la base de données existe
+        if ! sudo mysql -u root -p"$MYSQL_ROOT_PASSWORD" -e "SHOW DATABASES LIKE 'pixel_hub';" | grep -q "pixel_hub"; then
+            print_message "ERREUR: La base de données pixel_hub n'existe pas." "$RED"
+        fi
+        
+        # Vérifier si l'utilisateur existe
+        if ! sudo mysql -u root -p"$MYSQL_ROOT_PASSWORD" -e "SELECT User FROM mysql.user WHERE User='pixel_hub';" | grep -q "pixel_hub"; then
+            print_message "ERREUR: L'utilisateur pixel_hub n'existe pas." "$RED"
+        fi
+        
+        # Vérifier les privilèges
+        if ! sudo mysql -u root -p"$MYSQL_ROOT_PASSWORD" -e "SHOW GRANTS FOR 'pixel_hub'@'localhost';" | grep -q "ALL PRIVILEGES"; then
+            print_message "ERREUR: L'utilisateur pixel_hub n'a pas les privilèges nécessaires." "$RED"
+        fi
+        
         exit 1
     fi
+    
+    # Mettre à jour le fichier .env avec le mot de passe de la base de données
+    sed -i "s/DB_PASSWORD=.*/DB_PASSWORD=$MYSQL_PASSWORD/" /var/www/pixel-hub/.env
     
     print_message "Base de données configurée avec succès." "$GREEN"
 }
