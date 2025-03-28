@@ -69,10 +69,30 @@ check_prerequisites() {
     print_message "Vérification des prérequis..." "$YELLOW"
     
     # Vérifier la connexion internet
-    check_internet
+    print_message "Vérification de la connexion internet..." "$YELLOW"
+    if ping -c 1 google.com &> /dev/null; then
+        print_message "Connexion internet vérifiée." "$GREEN"
+    else
+        print_message "ERREUR: Pas de connexion internet." "$RED"
+        exit 1
+    fi
+    
+    # Installer bc si nécessaire
+    if ! command -v bc &> /dev/null; then
+        print_message "Installation de bc..." "$YELLOW"
+        sudo apt-get update
+        sudo apt-get install -y bc
+    fi
     
     # Vérifier la version de PHP
-    check_php_version
+    print_message "Vérification de la version de PHP..." "$YELLOW"
+    PHP_VERSION=$(php -v | head -n 1 | cut -d " " -f 2 | cut -d "." -f 1,2)
+    if [ $(echo "$PHP_VERSION >= 7.4" | bc) -eq 1 ]; then
+        print_message "Version de PHP vérifiée : $PHP_VERSION" "$GREEN"
+    else
+        print_message "ERREUR: PHP 7.4 ou supérieur requis." "$RED"
+        exit 1
+    fi
     
     # Vérifier les commandes requises
     for cmd in php mysql apache2ctl composer git; do
@@ -382,6 +402,42 @@ EOL
     check_error "Création du fichier composer.lock"
 }
 
+# Fonction pour configurer la base de données
+configure_database() {
+    print_message "Configuration de la base de données..." "$YELLOW"
+    
+    # Demander les mots de passe
+    read -p "Entrez le mot de passe MySQL root : " MYSQL_ROOT_PASSWORD
+    read -p "Entrez le mot de passe pour l'utilisateur pixel_hub : " MYSQL_PASSWORD
+    
+    # Sécuriser l'installation de MariaDB
+    sudo mysql_secure_installation << MYSQL_SECURE
+y
+$MYSQL_ROOT_PASSWORD
+$MYSQL_ROOT_PASSWORD
+y
+y
+y
+y
+MYSQL_SECURE
+    
+    # Créer la base de données et l'utilisateur
+    sudo mysql -u root -p"$MYSQL_ROOT_PASSWORD" << MYSQL_SCRIPT
+CREATE DATABASE IF NOT EXISTS pixel_hub CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER IF NOT EXISTS 'pixel_hub'@'localhost' IDENTIFIED BY '$MYSQL_PASSWORD';
+GRANT ALL PRIVILEGES ON pixel_hub.* TO 'pixel_hub'@'localhost';
+FLUSH PRIVILEGES;
+MYSQL_SCRIPT
+    
+    # Vérifier que la base de données est accessible
+    if ! mysql -u pixel_hub -p"$MYSQL_PASSWORD" -e "USE pixel_hub;" &> /dev/null; then
+        print_message "ERREUR: Impossible d'accéder à la base de données." "$RED"
+        exit 1
+    fi
+    
+    print_message "Base de données configurée avec succès." "$GREEN"
+}
+
 # Fonction pour installer l'application
 install_application() {
     print_message "Installation de l'application..." "$YELLOW"
@@ -454,30 +510,7 @@ install_application() {
     composer dump-autoload --optimize --no-dev
     
     # Configurer la base de données
-    read -p "Entrez le mot de passe MySQL root : " MYSQL_ROOT_PASSWORD
-    read -p "Entrez le mot de passe pour l'utilisateur pixel_hub : " MYSQL_PASSWORD
-    
-    # Sécuriser l'installation de MariaDB
-    sudo mysql_secure_installation << MYSQL_SECURE
-y
-$MYSQL_ROOT_PASSWORD
-$MYSQL_ROOT_PASSWORD
-y
-y
-y
-y
-MYSQL_SECURE
-    
-    # Créer la base de données et l'utilisateur
-    sudo mysql -u root -p"$MYSQL_ROOT_PASSWORD" << MYSQL_SCRIPT
-CREATE DATABASE IF NOT EXISTS pixel_hub CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-CREATE USER IF NOT EXISTS 'pixel_hub'@'localhost' IDENTIFIED BY '$MYSQL_PASSWORD';
-GRANT ALL PRIVILEGES ON pixel_hub.* TO 'pixel_hub'@'localhost';
-FLUSH PRIVILEGES;
-MYSQL_SCRIPT
-    
-    # Mettre à jour le fichier .env avec le mot de passe de la base de données
-    sed -i "s/DB_PASSWORD=.*/DB_PASSWORD=$MYSQL_PASSWORD/" /var/www/pixel-hub/.env
+    configure_database
     
     # Créer l'utilisateur administrateur
     read -p "Entrez le nom d'utilisateur admin : " ADMIN_USERNAME
