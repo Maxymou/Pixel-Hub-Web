@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <!-- Fond -->
+    <rect width="128" height="128" rx="24" fill="#F3F4F6"/>
+    
+    <!-- Outils -->
+    <g transform="translate(24, 24)">
+        <!-- Clé -->
+        <path d="M20 20h40v10h-40z" fill="#3B82F6" fill-opacity="0.1"/>
+        <path d="M30 30h20v10h-20z" fill="#3B82F6" fill-opacity="0.2"/>
+        <path d="M35 40h10v10h-10z" fill="#3B82F6"/>
+        
+        <!-- Tournevis -->
+        <path d="M60 20h20v40h-20z" fill="#3B82F6" fill-opacity="0.1"/>
+        <path d="M65 25h10v30h-10z" fill="#3B82F6" fill-opacity="0.2"/>
+        <path d="M70 30h5v20h-5z" fill="#3B82F6"/>
+        
+        <!-- Engrenage -->
+        <circle cx="40" cy="60" r="15" fill="#3B82F6" fill-opacity="0.1"/>
+        <path d="M40 45h5v30h-5z" fill="#3B82F6"/>
+        <path d="M25 40h30v5h-30z" fill="#3B82F6"/>
+        <path d="M40 40h5v5h-5z" fill="#3B82F6"/>
+        <path d="M40 60h5v5h-5z" fill="#3B82F6"/>
+    </g>
+</svg> 

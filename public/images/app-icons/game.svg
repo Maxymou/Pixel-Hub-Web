@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <!-- Fond -->
+    <rect width="128" height="128" rx="24" fill="#F3F4F6"/>
+    
+    <!-- Manette de jeu -->
+    <g transform="translate(24, 24)">
+        <!-- Corps de la manette -->
+        <path d="M0 20h80v40H0z" fill="#3B82F6" fill-opacity="0.1"/>
+        <path d="M10 30h60v20H10z" fill="#3B82F6" fill-opacity="0.2"/>
+        <path d="M20 40h40v10H20z" fill="#3B82F6"/>
+        
+        <!-- Boutons -->
+        <circle cx="65" cy="30" r="8" fill="#EF4444"/>
+        <circle cx="65" cy="50" r="8" fill="#10B981"/>
+        
+        <!-- D-pad -->
+        <path d="M20 20h10v10h-10z" fill="#3B82F6"/>
+        <path d="M30 20h10v10h-10z" fill="#3B82F6"/>
+        <path d="M20 30h10v10h-10z" fill="#3B82F6"/>
+        <path d="M30 30h10v10h-10z" fill="#3B82F6"/>
+    </g>
+</svg> 

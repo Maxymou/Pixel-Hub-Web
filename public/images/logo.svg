@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <!-- Fond -->
+    <rect width="128" height="128" rx="64" fill="#3B82F6"/>
+    
+    <!-- Symbole Pixel Hub -->
+    <g transform="translate(24, 24)">
+        <!-- P -->
+        <path d="M0 0h16v8h-8v24h-8V0z" fill="white"/>
+        <path d="M8 8h8v8h-8z" fill="white"/>
+        
+        <!-- i -->
+        <path d="M24 0h8v32h-8z" fill="white"/>
+        <path d="M28 40h8v8h-8z" fill="white"/>
+        
+        <!-- x -->
+        <path d="M40 0h8v8h-8z" fill="white"/>
+        <path d="M40 24h8v8h-8z" fill="white"/>
+        <path d="M48 8h8v8h-8z" fill="white"/>
+        <path d="M48 24h8v8h-8z" fill="white"/>
+        
+        <!-- e -->
+        <path d="M64 0h24v8H64z" fill="white"/>
+        <path d="M64 8h24v8H64z" fill="white"/>
+        <path d="M64 16h24v8H64z" fill="white"/>
+        <path d="M64 24h24v8H64z" fill="white"/>
+        
+        <!-- l -->
+        <path d="M96 0h8v32h-8z" fill="white"/>
+    </g>
+</svg> 

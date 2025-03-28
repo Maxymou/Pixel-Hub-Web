@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <!-- Fond -->
+    <rect width="128" height="128" rx="24" fill="#F3F4F6"/>
+    
+    <!-- Réseau -->
+    <g transform="translate(24, 24)">
+        <!-- Points de connexion -->
+        <circle cx="40" cy="20" r="10" fill="#3B82F6" fill-opacity="0.1"/>
+        <circle cx="40" cy="20" r="5" fill="#3B82F6"/>
+        
+        <circle cx="20" cy="40" r="10" fill="#3B82F6" fill-opacity="0.1"/>
+        <circle cx="20" cy="40" r="5" fill="#3B82F6"/>
+        
+        <circle cx="60" cy="40" r="10" fill="#3B82F6" fill-opacity="0.1"/>
+        <circle cx="60" cy="40" r="5" fill="#3B82F6"/>
+        
+        <circle cx="40" cy="60" r="10" fill="#3B82F6" fill-opacity="0.1"/>
+        <circle cx="40" cy="60" r="5" fill="#3B82F6"/>
+        
+        <!-- Lignes de connexion -->
+        <path d="M40 25L20 40" stroke="#3B82F6" stroke-width="2"/>
+        <path d="M40 25L60 40" stroke="#3B82F6" stroke-width="2"/>
+        <path d="M20 40L40 60" stroke="#3B82F6" stroke-width="2"/>
+        <path d="M60 40L40 60" stroke="#3B82F6" stroke-width="2"/>
+        
+        <!-- Signal -->
+        <path d="M70 20h5v40h-5z" fill="#3B82F6"/>
+        <path d="M75 20h5v30h-5z" fill="#3B82F6"/>
+        <path d="M80 20h5v20h-5z" fill="#3B82F6"/>
+    </g>
+</svg> 

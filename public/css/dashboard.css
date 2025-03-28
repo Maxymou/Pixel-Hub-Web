@@ -1,0 +1,308 @@
+/* Styles généraux */
+.widget {
+    transition: all 0.3s ease;
+    height: 100%;
+    min-height: 300px;
+}
+
+.widget:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+/* Styles des widgets de graphiques */
+.chart-widget {
+    position: relative;
+    height: 300px;
+}
+
+.chart-widget canvas {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+/* Styles des widgets de liste */
+.list-widget {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.list-widget::-webkit-scrollbar {
+    width: 6px;
+}
+
+.list-widget::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 3px;
+}
+
+.list-widget::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 3px;
+}
+
+.list-widget::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
+.list-item {
+    transition: all 0.2s ease;
+}
+
+.list-item:hover {
+    transform: translateX(4px);
+    background-color: #f3f4f6;
+}
+
+/* Styles des widgets d'alertes */
+.alert-widget {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.alert-item {
+    animation: slideIn 0.3s ease;
+    margin-bottom: 0.5rem;
+}
+
+.alert-item:last-child {
+    margin-bottom: 0;
+}
+
+/* Styles des widgets de statut */
+.status-widget {
+    display: grid;
+    gap: 1rem;
+}
+
+.status-item {
+    transition: all 0.2s ease;
+}
+
+.status-item:hover {
+    transform: translateX(4px);
+    background-color: #f3f4f6;
+}
+
+.progress-bar {
+    transition: width 0.5s ease;
+}
+
+/* Animations */
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes pulse {
+    0% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.05);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+/* Styles des icônes */
+.widget-icon {
+    width: 2rem;
+    height: 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.5rem;
+    background-color: #f3f4f6;
+    transition: all 0.2s ease;
+}
+
+.widget-icon:hover {
+    background-color: #e5e7eb;
+    transform: scale(1.1);
+}
+
+/* Styles des titres de widgets */
+.widget-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.widget-title h3 {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: #111827;
+}
+
+/* Styles des tooltips */
+.tooltip {
+    position: relative;
+    display: inline-block;
+}
+
+.tooltip .tooltip-text {
+    visibility: hidden;
+    background-color: #1f2937;
+    color: #fff;
+    text-align: center;
+    padding: 0.5rem;
+    border-radius: 0.375rem;
+    position: absolute;
+    z-index: 1;
+    bottom: 125%;
+    left: 50%;
+    transform: translateX(-50%);
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.tooltip:hover .tooltip-text {
+    visibility: visible;
+    opacity: 1;
+}
+
+/* Styles des badges */
+.badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.5rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.badge-success {
+    background-color: #dcfce7;
+    color: #166534;
+}
+
+.badge-warning {
+    background-color: #fef3c7;
+    color: #92400e;
+}
+
+.badge-error {
+    background-color: #fee2e2;
+    color: #991b1b;
+}
+
+/* Styles des boutons d'action */
+.action-button {
+    padding: 0.5rem;
+    border-radius: 0.375rem;
+    color: #6b7280;
+    transition: all 0.2s ease;
+}
+
+.action-button:hover {
+    background-color: #f3f4f6;
+    color: #111827;
+}
+
+/* Styles du modal des paramètres */
+.settings-modal {
+    backdrop-filter: blur(4px);
+}
+
+.settings-content {
+    animation: modalSlideIn 0.3s ease;
+}
+
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Styles des formulaires de configuration */
+.config-form {
+    display: grid;
+    gap: 1rem;
+}
+
+.form-group {
+    display: grid;
+    gap: 0.5rem;
+}
+
+.form-label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #374151;
+}
+
+.form-input {
+    padding: 0.5rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.375rem;
+    font-size: 0.875rem;
+    transition: all 0.2s ease;
+}
+
+.form-input:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Styles des switches */
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 3rem;
+    height: 1.5rem;
+}
+
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.switch-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #d1d5db;
+    transition: .4s;
+    border-radius: 1.5rem;
+}
+
+.switch-slider:before {
+    position: absolute;
+    content: "";
+    height: 1.125rem;
+    width: 1.125rem;
+    left: 0.1875rem;
+    bottom: 0.1875rem;
+    background-color: white;
+    transition: .4s;
+    border-radius: 50%;
+}
+
+input:checked + .switch-slider {
+    background-color: #3b82f6;
+}
+
+input:checked + .switch-slider:before {
+    transform: translateX(1.5rem);
+} 

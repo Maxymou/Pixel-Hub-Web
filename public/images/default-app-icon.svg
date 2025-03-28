@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <!-- Fond -->
+    <rect width="128" height="128" rx="24" fill="#F3F4F6"/>
+    
+    <!-- Icône d'application -->
+    <path d="M32 32h64v64H32V32z" fill="#3B82F6" fill-opacity="0.1"/>
+    <path d="M40 40h48v48H40V40z" fill="#3B82F6" fill-opacity="0.2"/>
+    <path d="M48 48h32v32H48V48z" fill="#3B82F6"/>
+    
+    <!-- Symbole Pixel -->
+    <path d="M56 56h8v8h-8z" fill="white"/>
+    <path d="M64 56h8v8h-8z" fill="white"/>
+    <path d="M56 64h8v8h-8z" fill="white"/>
+    <path d="M64 64h8v8h-8z" fill="white"/>
+</svg> 
