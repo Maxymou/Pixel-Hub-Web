@@ -79,10 +79,10 @@ install_prerequisites() {
         php8.1-redis \
         php8.1-imagick
     
-    # Installer MySQL
-    sudo apt-get install -y mysql-server
-    sudo systemctl start mysql
-    sudo systemctl enable mysql
+    # Installer MySQL (MariaDB)
+    sudo apt-get install -y mariadb-server
+    sudo systemctl start mariadb
+    sudo systemctl enable mariadb
     
     # Installer Apache
     sudo apt-get install -y apache2
@@ -183,7 +183,19 @@ install_application() {
     read -p "Entrez le mot de passe MySQL root : " MYSQL_ROOT_PASSWORD
     read -p "Entrez le mot de passe pour l'utilisateur pixel_hub : " MYSQL_PASSWORD
     
-    mysql -u root -p"$MYSQL_ROOT_PASSWORD" << MYSQL_SCRIPT
+    # Sécuriser l'installation de MariaDB
+    sudo mysql_secure_installation << MYSQL_SECURE
+y
+$MYSQL_ROOT_PASSWORD
+$MYSQL_ROOT_PASSWORD
+y
+y
+y
+y
+MYSQL_SECURE
+    
+    # Créer la base de données et l'utilisateur
+    sudo mysql -u root -p"$MYSQL_ROOT_PASSWORD" << MYSQL_SCRIPT
 CREATE DATABASE IF NOT EXISTS pixel_hub CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE USER IF NOT EXISTS 'pixel_hub'@'localhost' IDENTIFIED BY '$MYSQL_PASSWORD';
 GRANT ALL PRIVILEGES ON pixel_hub.* TO 'pixel_hub'@'localhost';
@@ -248,7 +260,7 @@ restart_services() {
     print_message "Redémarrage des services..." "$YELLOW"
     
     sudo systemctl restart apache2
-    sudo systemctl restart mysql
+    sudo systemctl restart mariadb
     
     print_message "Services redémarrés avec succès." "$GREEN"
 }
