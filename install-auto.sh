@@ -346,6 +346,39 @@ EOL
     print_message "Structure du projet créée avec succès." "$GREEN"
 }
 
+# Fonction pour créer le fichier composer.lock de base
+create_composer_lock() {
+    print_message "Création du fichier composer.lock de base..." "$YELLOW"
+    
+    cat > /var/www/pixel-hub/composer.lock << EOL
+{
+    "_readme": [
+        "This file locks the dependencies of your project to a known state",
+        "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
+        "This file is @generated automatically"
+    ],
+    "content-hash": "generated",
+    "packages": [],
+    "packages-dev": [],
+    "aliases": [],
+    "minimum-stability": "stable",
+    "stability-flags": [],
+    "prefer-stable": false,
+    "prefer-lowest": false,
+    "platform": {
+        "php": ">=7.4"
+    },
+    "platform-dev": [],
+    "plugin-api-version": "2.0.0"
+}
+EOL
+    
+    chown www-data:www-data /var/www/pixel-hub/composer.lock
+    chmod 644 /var/www/pixel-hub/composer.lock
+    
+    check_error "Création du fichier composer.lock"
+}
+
 # Fonction pour installer l'application
 install_application() {
     print_message "Installation de l'application..." "$YELLOW"
@@ -395,12 +428,18 @@ install_application() {
     sudo chmod -R 775 storage bootstrap/cache
     sudo chmod -R 775 public/uploads
     
+    # Créer les fichiers de configuration
+    print_message "Création des fichiers de configuration..." "$YELLOW"
+    create_php_config
+    create_env_file
+    create_composer_lock
+    
     # Installer les dépendances avec Composer
     print_message "Installation des dépendances avec Composer..." "$YELLOW"
     export COMPOSER_ALLOW_SUPERUSER=1
     
     # Nettoyer l'environnement Composer
-    rm -rf vendor composer.lock
+    rm -rf vendor
     composer clear-cache
     
     # Installer toutes les dépendances en une seule fois
@@ -433,13 +472,8 @@ GRANT ALL PRIVILEGES ON pixel_hub.* TO 'pixel_hub'@'localhost';
 FLUSH PRIVILEGES;
 MYSQL_SCRIPT
     
-    # Mettre à jour le fichier .env
-    sed -i "s/DB_PASSWORD=.*/DB_PASSWORD=$MYSQL_PASSWORD/" .env
-    
-    # Générer la clé d'application
-    php -r "echo bin2hex(random_bytes(32));" > .env.key
-    sed -i "s/APP_KEY=.*/APP_KEY=$(cat .env.key)/" .env
-    rm .env.key
+    # Mettre à jour le fichier .env avec le mot de passe de la base de données
+    sed -i "s/DB_PASSWORD=.*/DB_PASSWORD=$MYSQL_PASSWORD/" /var/www/pixel-hub/.env
     
     # Créer l'utilisateur administrateur
     read -p "Entrez le nom d'utilisateur admin : " ADMIN_USERNAME
@@ -457,10 +491,6 @@ return [
 ];
 EOL
     
-    # Créer les fichiers de configuration
-    create_php_config
-    create_env_file
-    
     print_message "Application installée avec succès." "$GREEN"
 }
 
@@ -471,11 +501,21 @@ get_ip_address() {
     
     # Si aucune adresse IP n'est trouvée, essayer les interfaces réseau
     if [ -z "$IP" ]; then
-        if [ -f "/sys/class/net/eth0/address" ]; then
+        # Essayer eth0
+        if ip addr show eth0 &> /dev/null; then
             IP=$(ip addr show eth0 | grep "inet\b" | awk '{print $2}' | cut -d/ -f1)
-        elif [ -f "/sys/class/net/wlan0/address" ]; then
+        # Essayer wlan0
+        elif ip addr show wlan0 &> /dev/null; then
             IP=$(ip addr show wlan0 | grep "inet\b" | awk '{print $2}' | cut -d/ -f1)
+        # Essayer wlan1
+        elif ip addr show wlan1 &> /dev/null; then
+            IP=$(ip addr show wlan1 | grep "inet\b" | awk '{print $2}' | cut -d/ -f1)
         fi
+    fi
+    
+    # Si toujours aucune adresse IP, essayer une dernière méthode
+    if [ -z "$IP" ]; then
+        IP=$(ip route get 1 | awk '{print $7;exit}')
     fi
     
     # Si toujours aucune adresse IP, retourner localhost
