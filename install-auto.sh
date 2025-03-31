@@ -69,6 +69,14 @@ fix_application_permissions() {
         return 1
     fi
     
+    # Obtenir l'utilisateur actuel
+    CURRENT_USER=$(whoami)
+    
+    # Correction des permissions du répertoire principal
+    print_message "Correction des permissions du répertoire principal..."
+    sudo chown -R $CURRENT_USER:www-data "$APP_DIR"
+    sudo chmod -R 755 "$APP_DIR"
+    
     # Créer les répertoires nécessaires s'ils n'existent pas
     DIRS=(
         "$APP_DIR/storage"
@@ -91,28 +99,29 @@ fix_application_permissions() {
     # Définir les propriétaires et permissions
     print_message "Configuration des permissions..."
     
-    # Obtenir l'utilisateur actuel
-    CURRENT_USER=$(whoami)
-    
-    # Propriétaire principal
-    print_message "Définition du propriétaire principal..."
-    sudo chown -R $CURRENT_USER:www-data "$APP_DIR"
-    
     # Permissions pour les répertoires de stockage
     for dir in "${DIRS[@]}"; do
         print_message "Configuration des permissions pour : $dir"
         sudo chmod -R 775 "$dir"
         sudo chown -R $CURRENT_USER:www-data "$dir"
+        sudo setfacl -R -m u:www-data:rwx "$dir"
+        sudo setfacl -R -m u:$CURRENT_USER:rwx "$dir"
     done
     
     # Permissions pour les fichiers de configuration
     print_message "Configuration des permissions des fichiers..."
-    sudo chmod 644 "$APP_DIR/.env"
-    sudo chmod 644 "$APP_DIR/composer.json"
-    sudo chmod 644 "$APP_DIR/composer.lock"
-    sudo chown $CURRENT_USER:www-data "$APP_DIR/.env"
-    sudo chown $CURRENT_USER:www-data "$APP_DIR/composer.json"
-    sudo chown $CURRENT_USER:www-data "$APP_DIR/composer.lock"
+    CONFIG_FILES=(
+        "$APP_DIR/.env"
+        "$APP_DIR/composer.json"
+        "$APP_DIR/composer.lock"
+    )
+    
+    for file in "${CONFIG_FILES[@]}"; do
+        if [ -f "$file" ]; then
+            sudo chmod 644 "$file"
+            sudo chown $CURRENT_USER:www-data "$file"
+        fi
+    done
     
     # Permissions pour le répertoire public
     print_message "Configuration des permissions du répertoire public..."
@@ -133,21 +142,17 @@ fix_application_permissions() {
             print_message "✅ $dir : Permissions correctes"
             print_message "  Propriétaire : $(stat -c '%U:%G' $dir)"
             print_message "  Permissions : $(stat -c '%a' $dir)"
+            print_message "  ACL : $(getfacl $dir | grep -v '^#' | grep -v '^$')"
         else
             print_error "❌ $dir : Problème de permissions"
             print_message "  Propriétaire actuel : $(stat -c '%U:%G' $dir)"
             print_message "  Permissions actuelles : $(stat -c '%a' $dir)"
+            print_message "  ACL actuelles : $(getfacl $dir | grep -v '^#' | grep -v '^$')"
         fi
     done
     
     # Vérifier les permissions des fichiers de configuration
     print_message "\nVérification des permissions des fichiers de configuration :"
-    CONFIG_FILES=(
-        "$APP_DIR/.env"
-        "$APP_DIR/composer.json"
-        "$APP_DIR/composer.lock"
-    )
-    
     for file in "${CONFIG_FILES[@]}"; do
         if [ -f "$file" ]; then
             if [ -r "$file" ]; then
@@ -174,6 +179,8 @@ fix_application_permissions() {
             print_message "Tentative de correction..."
             sudo chmod -R 775 "$dir"
             sudo chown -R $CURRENT_USER:www-data "$dir"
+            sudo setfacl -R -m u:www-data:rwx "$dir"
+            sudo setfacl -R -m u:$CURRENT_USER:rwx "$dir"
             if sudo -u www-data test -w "$dir"; then
                 print_message "✅ Correction réussie"
             else
