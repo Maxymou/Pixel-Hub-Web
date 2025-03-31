@@ -158,6 +158,7 @@ fix_application_permissions() {
         "$APP_DIR/.env"
         "$APP_DIR/composer.json"
         "$APP_DIR/composer.lock"
+        "$APP_DIR/config/admin.php"
     )
     
     for file in "${CONFIG_FILES[@]}"; do
@@ -177,6 +178,17 @@ fix_application_permissions() {
         print_message "Configuration des permissions du répertoire vendor..."
         sudo chmod -R 755 "$APP_DIR/vendor"
         sudo chown -R $CURRENT_USER:www-data "$APP_DIR/vendor"
+        
+        # Permissions spécifiques pour les fichiers exécutables dans vendor
+        find "$APP_DIR/vendor" -type f -name "*.php" -exec sudo chmod 644 {} \;
+        find "$APP_DIR/vendor" -type f -name "*.sh" -exec sudo chmod 755 {} \;
+    fi
+    
+    # Permissions pour les fichiers de logs
+    print_message "Configuration des permissions des fichiers de logs..."
+    if [ -f "$APP_DIR/storage/logs/laravel.log" ]; then
+        sudo chmod 664 "$APP_DIR/storage/logs/laravel.log"
+        sudo chown $CURRENT_USER:www-data "$APP_DIR/storage/logs/laravel.log"
     fi
     
     # Vérifier les permissions après correction
