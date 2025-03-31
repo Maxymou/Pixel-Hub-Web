@@ -461,11 +461,6 @@ KeepAliveTimeout 5
 ErrorLog ${APACHE_LOG_DIR}/error.log
 LogLevel warn
 
-# Configuration des modules
-LoadModule rewrite_module /usr/lib/apache2/modules/mod_rewrite.so
-LoadModule headers_module /usr/lib/apache2/modules/mod_headers.so
-LoadModule ssl_module /usr/lib/apache2/modules/mod_ssl.so
-
 # Configuration des ports
 Listen 80
 Listen 443
@@ -480,7 +475,23 @@ EOL
     sudo a2enmod ssl
     
     # Configuration du site
-    sudo cp pixel-hub.conf /etc/apache2/sites-available/
+    sudo tee /etc/apache2/sites-available/pixel-hub.conf > /dev/null << EOL
+<VirtualHost *:80>
+    ServerName localhost
+    ServerAlias pixel-hub.local
+    DocumentRoot /var/www/pixel-hub-web/public
+
+    <Directory /var/www/pixel-hub-web/public>
+        Options Indexes FollowSymLinks
+        AllowOverride All
+        Require all granted
+    </Directory>
+
+    ErrorLog ${APACHE_LOG_DIR}/pixel-hub-error.log
+    CustomLog ${APACHE_LOG_DIR}/pixel-hub-access.log combined
+</VirtualHost>
+EOL
+    
     sudo a2ensite pixel-hub
     sudo a2dissite 000-default
     
