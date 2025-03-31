@@ -422,6 +422,12 @@ install_apache() {
     sudo apt-get update
     sudo apt-get install -y apache2
     
+    # Créer le répertoire de l'application
+    print_message "Création du répertoire de l'application..."
+    sudo mkdir -p /var/www/pixel-hub-web/public
+    sudo chown -R www-data:www-data /var/www/pixel-hub-web
+    sudo chmod -R 755 /var/www/pixel-hub-web
+    
     # Configuration d'Apache
     sudo a2enmod rewrite
     sudo a2enmod headers
