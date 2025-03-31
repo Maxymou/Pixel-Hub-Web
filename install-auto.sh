@@ -458,11 +458,15 @@ install_apache() {
     # Configuration d'Apache
     print_message "Configuration d'Apache..."
     
+    # Créer le répertoire de configuration si nécessaire
+    sudo mkdir -p /etc/apache2
+    
     # Créer le fichier de configuration principal
+    print_message "Création du fichier de configuration principal..."
     sudo tee /etc/apache2/apache2.conf > /dev/null << EOL
 # Configuration globale d'Apache
-DefaultRuntimeDir ${APACHE_RUN_DIR}
-PidFile ${APACHE_PID_FILE}
+DefaultRuntimeDir /var/run/apache2
+PidFile /var/run/apache2/apache2.pid
 Timeout 300
 KeepAlive On
 MaxKeepAliveRequests 100
@@ -482,7 +486,7 @@ KeepAliveTimeout 5
 </Directory>
 
 # Configuration des logs
-ErrorLog ${APACHE_LOG_DIR}/error.log
+ErrorLog /var/log/apache2/error.log
 LogLevel warn
 
 # Configuration des ports
@@ -494,6 +498,7 @@ IncludeOptional sites-enabled/*.conf
 EOL
     
     # Créer le fichier envvars
+    print_message "Création du fichier envvars..."
     sudo tee /etc/apache2/envvars > /dev/null << EOL
 export APACHE_RUN_USER=www-data
 export APACHE_RUN_GROUP=www-data
@@ -504,13 +509,30 @@ export APACHE_LOG_DIR=/var/log/apache2
 export LANG=C
 EOL
     
+    # Créer les répertoires nécessaires
+    print_message "Création des répertoires nécessaires..."
+    sudo mkdir -p /var/run/apache2
+    sudo mkdir -p /var/lock/apache2
+    sudo mkdir -p /var/log/apache2
+    
+    # Configuration des permissions
+    print_message "Configuration des permissions..."
+    sudo chown -R root:root /etc/apache2
+    sudo chmod -R 755 /etc/apache2
+    sudo chown -R www-data:www-data /var/www/html
+    sudo chmod -R 755 /var/www/html
+    sudo chown -R root:adm /var/log/apache2
+    sudo chmod -R 755 /var/log/apache2
+    
     # Configuration des modules
+    print_message "Configuration des modules Apache..."
     sudo a2enmod rewrite
     sudo a2enmod headers
     sudo a2enmod ssl
     sudo a2enmod proxy_fcgi
     
     # Configuration du site
+    print_message "Configuration du site..."
     sudo tee /etc/apache2/sites-available/pixel-hub.conf > /dev/null << EOL
 <VirtualHost *:80>
     ServerName localhost
@@ -527,23 +549,15 @@ EOL
         SetHandler "proxy:unix:/run/php/php8.2-fpm.sock|fcgi://localhost/"
     </FilesMatch>
 
-    ErrorLog ${APACHE_LOG_DIR}/pixel-hub-error.log
-    CustomLog ${APACHE_LOG_DIR}/pixel-hub-access.log combined
+    ErrorLog /var/log/apache2/pixel-hub-error.log
+    CustomLog /var/log/apache2/pixel-hub-access.log combined
 </VirtualHost>
 EOL
     
     # Activer le site et désactiver le site par défaut
+    print_message "Activation du site..."
     sudo a2ensite pixel-hub
     sudo a2dissite 000-default
-    
-    # Configuration des permissions Apache
-    print_message "Configuration des permissions Apache..."
-    sudo chown -R www-data:www-data /var/www/html
-    sudo chmod -R 755 /var/www/html
-    sudo chown -R root:root /etc/apache2
-    sudo chmod -R 755 /etc/apache2
-    sudo chown -R root:adm /var/log/apache2
-    sudo chmod -R 755 /var/log/apache2
     
     # Vérifier la configuration Apache
     print_message "Vérification de la configuration Apache..."
