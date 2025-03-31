@@ -4,7 +4,7 @@ Pixel Hub Web est une application web pour gérer vos pixels et vos projets.
 
 ## Prérequis
 
-- PHP 8.0 ou supérieur
+- PHP 8.2 ou supérieur
 - Composer
 - MySQL 5.7 ou supérieur
 - Apache 2.4 ou supérieur
@@ -209,61 +209,22 @@ sudo systemctl stop apache2
 sudo systemctl stop mysql
 
 # Supprimer l'application
-sudo rm -rf /var/www/pixel-hub
+sudo rm -rf /var/www/pixel-hub-web
 
 # Supprimer la base de données
-sudo mysql -e "DROP DATABASE IF EXISTS pixel_hub; DROP USER IF EXISTS 'pixel_hub'@'localhost';"
+sudo mysql -e "DROP DATABASE IF EXISTS pixel_hub;"
+sudo mysql -e "DROP USER IF EXISTS 'pixel_hub'@'localhost';"
+sudo mysql -e "FLUSH PRIVILEGES;"
 
 # Supprimer les configurations
 sudo rm -f /etc/apache2/sites-available/pixel-hub.conf
-sudo rm -f /etc/php/8.1/apache2/conf.d/99-pixel-hub.ini
+sudo rm -f /etc/php/conf.d/99-pixel-hub.ini
 sudo rm -f /etc/security/limits.d/pixel-hub.conf
 
 # Désinstaller les paquets
-sudo apt-get remove -y \
-    php8.1 \
-    php8.1-cli \
-    php8.1-common \
-    php8.1-mysql \
-    php8.1-zip \
-    php8.1-gd \
-    php8.1-mbstring \
-    php8.1-curl \
-    php8.1-xml \
-    php8.1-bcmath \
-    php8.1-json \
-    php8.1-opcache \
-    php8.1-intl \
-    php8.1-ldap \
-    php8.1-redis \
-    php8.1-imagick \
-    mysql-server \
-    apache2
-
-# Supprimer les fichiers de configuration restants
-sudo apt-get purge -y \
-    php8.1 \
-    php8.1-cli \
-    php8.1-common \
-    php8.1-mysql \
-    php8.1-zip \
-    php8.1-gd \
-    php8.1-mbstring \
-    php8.1-curl \
-    php8.1-xml \
-    php8.1-bcmath \
-    php8.1-json \
-    php8.1-opcache \
-    php8.1-intl \
-    php8.1-ldap \
-    php8.1-redis \
-    php8.1-imagick \
-    mysql-server \
-    apache2
-
-# Nettoyer les paquets non utilisés
-sudo apt-get autoremove -y
-sudo apt-get clean
+sudo apt remove -y apache2 php8.2* mysql-server
+sudo apt autoremove -y
+sudo apt clean
 
 # Supprimer le dépôt PHP
 sudo rm -f /etc/apt/sources.list.d/php.list
