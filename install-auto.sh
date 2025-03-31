@@ -501,6 +501,10 @@ install_application() {
     mkdir -p app/Console
     mkdir -p app/Exceptions
     mkdir -p config
+    mkdir -p routes
+    mkdir -p resources/views
+    mkdir -p database/migrations
+    mkdir -p database/seeders
     
     # Créer le fichier composer.json
     cat > composer.json << 'EOL'
@@ -527,12 +531,41 @@ install_application() {
         "monolog/monolog": "^2.9",
         "firebase/php-jwt": "^6.4"
     },
+    "require-dev": {
+        "phpunit/phpunit": "^9.0",
+        "mockery/mockery": "^1.4",
+        "phpstan/phpstan": "^1.0"
+    },
     "autoload": {
         "psr-4": {
-            "App\\": "app/"
+            "App\\": "app/",
+            "Database\\Factories\\": "database/factories/",
+            "Database\\Seeders\\": "database/seeders/"
         }
     },
-    "minimum-stability": "stable",
+    "autoload-dev": {
+        "psr-4": {
+            "Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "post-autoload-dump": [
+            "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
+            "@php artisan package:discover --ansi"
+        ],
+        "post-root-package-install": [
+            "@php -r \"file_exists('.env') || file_put_contents('.env', file_get_contents('.env.example'));\""
+        ],
+        "post-create-project-cmd": [
+            "@php artisan key:generate --ansi"
+        ]
+    },
+    "config": {
+        "optimize-autoloader": true,
+        "preferred-install": "dist",
+        "sort-packages": true
+    },
+    "minimum-stability": "dev",
     "prefer-stable": true
 }
 EOL
