@@ -458,10 +458,7 @@ install_apache() {
     # Configuration d'Apache
     print_message "Configuration d'Apache..."
     
-    # Sauvegarder la configuration originale
-    sudo cp /etc/apache2/apache2.conf /etc/apache2/apache2.conf.backup
-    
-    # Créer une nouvelle configuration Apache
+    # Créer le fichier de configuration principal
     sudo tee /etc/apache2/apache2.conf > /dev/null << EOL
 # Configuration globale d'Apache
 DefaultRuntimeDir ${APACHE_RUN_DIR}
@@ -496,6 +493,17 @@ Listen 443
 IncludeOptional sites-enabled/*.conf
 EOL
     
+    # Créer le fichier envvars
+    sudo tee /etc/apache2/envvars > /dev/null << EOL
+export APACHE_RUN_USER=www-data
+export APACHE_RUN_GROUP=www-data
+export APACHE_PID_FILE=/var/run/apache2/apache2.pid
+export APACHE_RUN_DIR=/var/run/apache2
+export APACHE_LOCK_DIR=/var/lock/apache2
+export APACHE_LOG_DIR=/var/log/apache2
+export LANG=C
+EOL
+    
     # Configuration des modules
     sudo a2enmod rewrite
     sudo a2enmod headers
@@ -524,6 +532,7 @@ EOL
 </VirtualHost>
 EOL
     
+    # Activer le site et désactiver le site par défaut
     sudo a2ensite pixel-hub
     sudo a2dissite 000-default
     
@@ -542,14 +551,14 @@ EOL
     
     # Démarrer Apache
     print_message "Démarrage d'Apache..."
-    sudo service apache2 stop
+    sudo systemctl stop apache2
     sudo rm -f /var/run/apache2/apache2.pid
     sudo rm -f /var/run/apache2/apache2.sock
-    sudo service apache2 start
+    sudo systemctl start apache2
     sleep 2
     
     # Vérifier si Apache est en cours d'exécution
-    if pgrep -x "apache2" > /dev/null; then
+    if systemctl is-active --quiet apache2; then
         print_message "✅ Apache démarré avec succès"
     else
         print_error "❌ Échec du démarrage d'Apache"
@@ -558,27 +567,6 @@ EOL
             print_message "Dernières erreurs Apache :"
             tail -n 10 /var/log/apache2/error.log
         fi
-        exit 1
-    fi
-    
-    # Vérification finale
-    print_message "Vérification finale d'Apache..."
-    if pgrep -x "apache2" > /dev/null; then
-        print_message "✅ Apache est en cours d'exécution"
-        print_message "Version : $(apache2 -v | head -n 1)"
-        print_message "Modules activés :"
-        apache2ctl -M | grep -i "rewrite\|ssl\|headers"
-        
-        # Vérifier que le serveur répond
-        if curl -s http://localhost > /dev/null; then
-            print_message "✅ Apache répond correctement"
-        else
-            print_warning "⚠️ Apache ne répond pas sur http://localhost"
-            print_message "Vérification des ports..."
-            netstat -tulpn | grep apache2
-        fi
-    else
-        print_error "❌ Apache n'est pas en cours d'exécution"
         exit 1
     fi
 }
