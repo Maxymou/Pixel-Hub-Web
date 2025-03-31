@@ -56,6 +56,66 @@ check_permissions() {
     print_message "Vérification des droits de $dir terminée"
 }
 
+# Fonction pour corriger les permissions de l'application
+fix_application_permissions() {
+    print_message "\n[Correction des permissions de l'application]"
+    
+    # Définir le répertoire de l'application
+    APP_DIR="/var/www/pixel-hub-web"
+    
+    # Vérifier si le répertoire existe
+    if [ ! -d "$APP_DIR" ]; then
+        print_error "Le répertoire $APP_DIR n'existe pas"
+        return 1
+    fi
+    
+    # Créer les répertoires nécessaires s'ils n'existent pas
+    DIRS=(
+        "$APP_DIR/storage"
+        "$APP_DIR/storage/logs"
+        "$APP_DIR/storage/framework/cache"
+        "$APP_DIR/storage/framework/sessions"
+        "$APP_DIR/storage/framework/views"
+        "$APP_DIR/bootstrap/cache"
+        "$APP_DIR/public/uploads"
+    )
+    
+    for dir in "${DIRS[@]}"; do
+        if [ ! -d "$dir" ]; then
+            print_message "Création du répertoire : $dir"
+            sudo mkdir -p "$dir"
+        fi
+    done
+    
+    # Définir les propriétaires et permissions
+    print_message "Configuration des permissions..."
+    
+    # Propriétaire principal
+    sudo chown -R www-data:www-data "$APP_DIR"
+    
+    # Permissions pour les répertoires de stockage
+    for dir in "${DIRS[@]}"; do
+        print_message "Configuration des permissions pour : $dir"
+        sudo chmod -R 775 "$dir"
+        sudo chown -R www-data:www-data "$dir"
+    done
+    
+    # Permissions pour les fichiers de configuration
+    sudo chmod 644 "$APP_DIR/.env"
+    sudo chmod 644 "$APP_DIR/composer.json"
+    sudo chmod 644 "$APP_DIR/composer.lock"
+    
+    # Vérifier les permissions après correction
+    print_message "\nVérification des permissions après correction :"
+    for dir in "${DIRS[@]}"; do
+        if [ -w "$dir" ]; then
+            print_message "✅ $dir : Permissions correctes"
+        else
+            print_error "❌ $dir : Problème de permissions"
+        fi
+    done
+}
+
 # Fonction pour vérifier l'état d'installation
 check_installation_status() {
     print_message "=== Vérification détaillée de l'installation ==="
@@ -173,6 +233,9 @@ check_installation_status() {
     check_permissions "/var/lib/mysql" "mysql" "mysql" "755"
     check_permissions "/etc/apache2" "root" "root" "755"
     check_permissions "/etc/mysql" "root" "root" "755"
+    
+    # Corriger les permissions de l'application
+    fix_application_permissions
     
     # Vérifier l'espace disque
     print_message "\n[Espace disque]"
