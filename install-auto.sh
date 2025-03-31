@@ -498,6 +498,32 @@ install_application() {
     mkdir -p bootstrap/cache
     mkdir -p public/uploads
     
+    # Créer le fichier artisan s'il n'existe pas
+    if [ ! -f "artisan" ]; then
+        cat > artisan << 'EOL'
+#!/usr/bin/env php
+<?php
+
+define('LARAVEL_START', microtime(true));
+
+require __DIR__.'/vendor/autoload.php';
+
+$app = require_once __DIR__.'/bootstrap/app.php';
+
+$kernel = $app->make(Illuminate\Contracts\Console\Kernel::class);
+
+$status = $kernel->handle(
+    $input = new Symfony\Component\Console\Input\ArgvInput,
+    new Symfony\Component\Console\Output\ConsoleOutput
+);
+
+$kernel->terminate($input, $status);
+
+exit($status);
+EOL
+        chmod +x artisan
+    fi
+    
     # Créer le fichier .env
     cat > .env << EOL
 APP_NAME=PixelHub
@@ -524,6 +550,35 @@ QUEUE_CONNECTION=sync
 SESSION_DRIVER=file
 SESSION_LIFETIME=120
 EOL
+    
+    # Créer le fichier bootstrap/app.php s'il n'existe pas
+    mkdir -p bootstrap
+    if [ ! -f "bootstrap/app.php" ]; then
+        cat > bootstrap/app.php << 'EOL'
+<?php
+
+$app = new Illuminate\Foundation\Application(
+    $_ENV['APP_BASE_PATH'] ?? dirname(__DIR__)
+);
+
+$app->singleton(
+    Illuminate\Contracts\Http\Kernel::class,
+    App\Http\Kernel::class
+);
+
+$app->singleton(
+    Illuminate\Contracts\Console\Kernel::class,
+    App\Console\Kernel::class
+);
+
+$app->singleton(
+    Illuminate\Contracts\Debug\ExceptionHandler::class,
+    App\Exceptions\Handler::class
+);
+
+return $app;
+EOL
+    fi
     
     # Supprimer le fichier composer.lock s'il existe
     rm -f composer.lock
