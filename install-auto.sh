@@ -1,5 +1,14 @@
 #!/bin/bash
 
+# Vérifier le système d'exploitation
+check_os() {
+    if [[ "$OSTYPE" == "msys" ]] || [[ "$OSTYPE" == "win32" ]] || [[ "$OSTYPE" == "cygwin" ]]; then
+        print_error "Ce script doit être exécuté sur Linux"
+        print_message "Vous êtes sur Windows. Veuillez utiliser WSL ou une machine virtuelle Linux."
+        exit 1
+    fi
+}
+
 # Couleurs pour les messages
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -882,6 +891,9 @@ uninstall_application() {
 
 # Fonction principale
 main() {
+    # Vérifier le système d'exploitation
+    check_os
+    
     # Vérifier si c'est une désinstallation
     if [ "$1" = "uninstall" ]; then
         uninstall_application
@@ -899,11 +911,11 @@ main() {
     # Installation des prérequis système
     install_system_prerequisites
     
-    # Installation d'Apache
-    install_apache
-    
     # Installation de PHP et ses extensions
     install_php
+    
+    # Installation d'Apache
+    install_apache
     
     # Installation de MySQL
     install_mysql
