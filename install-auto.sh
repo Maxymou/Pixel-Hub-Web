@@ -544,37 +544,106 @@ set_application_permissions() {
     sudo chown -R $CURRENT_USER:www-data "$APP_DIR"
     sudo chmod -R 755 "$APP_DIR"
     
-    # Permissions pour les répertoires spécifiques
-    DIRS=(
+    # Créer et configurer les répertoires de stockage
+    STORAGE_DIRS=(
         "$APP_DIR/storage"
+        "$APP_DIR/storage/logs"
+        "$APP_DIR/storage/framework/cache"
+        "$APP_DIR/storage/framework/sessions"
+        "$APP_DIR/storage/framework/views"
         "$APP_DIR/bootstrap/cache"
         "$APP_DIR/public/uploads"
     )
     
-    for dir in "${DIRS[@]}"; do
-        if [ -d "$dir" ]; then
-            print_message "Configuration des permissions pour : $dir"
-            sudo chmod -R 775 "$dir"
-            sudo chown -R $CURRENT_USER:www-data "$dir"
-        else
-            print_message "Création du répertoire : $dir"
-            sudo mkdir -p "$dir"
-            sudo chmod -R 775 "$dir"
-            sudo chown -R $CURRENT_USER:www-data "$dir"
+    for dir in "${STORAGE_DIRS[@]}"; do
+        print_message "Configuration du répertoire : $dir"
+        sudo mkdir -p "$dir"
+        sudo chmod -R 775 "$dir"
+        sudo chown -R $CURRENT_USER:www-data "$dir"
+        sudo setfacl -R -m u:www-data:rwx "$dir"
+        sudo setfacl -R -m u:$CURRENT_USER:rwx "$dir"
+        sudo setfacl -R -d -m u:www-data:rwx "$dir"
+        sudo setfacl -R -d -m u:$CURRENT_USER:rwx "$dir"
+    done
+    
+    # Permissions pour les fichiers de configuration
+    CONFIG_FILES=(
+        "$APP_DIR/.env"
+        "$APP_DIR/composer.json"
+        "$APP_DIR/composer.lock"
+        "$APP_DIR/config/admin.php"
+    )
+    
+    for file in "${CONFIG_FILES[@]}"; do
+        if [ -f "$file" ]; then
+            print_message "Configuration des permissions pour : $file"
+            sudo chmod 644 "$file"
+            sudo chown $CURRENT_USER:www-data "$file"
         fi
     done
     
+    # Permissions pour le répertoire public
+    print_message "Configuration des permissions du répertoire public..."
+    sudo chmod -R 755 "$APP_DIR/public"
+    sudo chown -R $CURRENT_USER:www-data "$APP_DIR/public"
+    
+    # Permissions pour le répertoire vendor
+    if [ -d "$APP_DIR/vendor" ]; then
+        print_message "Configuration des permissions du répertoire vendor..."
+        sudo chmod -R 755 "$APP_DIR/vendor"
+        sudo chown -R $CURRENT_USER:www-data "$APP_DIR/vendor"
+    fi
+    
     # Vérification des permissions
     print_message "\nVérification des permissions :"
-    for dir in "${DIRS[@]}"; do
+    for dir in "${STORAGE_DIRS[@]}"; do
         if [ -w "$dir" ]; then
             print_message "✅ $dir : Permissions correctes"
             print_message "  Propriétaire : $(stat -c '%U:%G' $dir)"
             print_message "  Permissions : $(stat -c '%a' $dir)"
+            print_message "  ACL : $(getfacl $dir | grep -v '^#' | grep -v '^$')"
         else
             print_error "❌ $dir : Problème de permissions"
             print_message "  Propriétaire actuel : $(stat -c '%U:%G' $dir)"
             print_message "  Permissions actuelles : $(stat -c '%a' $dir)"
+            print_message "  ACL actuelles : $(getfacl $dir | grep -v '^#' | grep -v '^$')"
+            
+            # Tentative de correction
+            print_message "Tentative de correction..."
+            sudo chmod -R 775 "$dir"
+            sudo chown -R $CURRENT_USER:www-data "$dir"
+            sudo setfacl -R -m u:www-data:rwx "$dir"
+            sudo setfacl -R -m u:$CURRENT_USER:rwx "$dir"
+            sudo setfacl -R -d -m u:www-data:rwx "$dir"
+            sudo setfacl -R -d -m u:$CURRENT_USER:rwx "$dir"
+            
+            if [ -w "$dir" ]; then
+                print_message "✅ Correction réussie"
+            else
+                print_error "❌ Échec de la correction"
+            fi
+        fi
+    done
+    
+    # Vérifier que l'utilisateur www-data peut écrire dans les répertoires
+    print_message "\nVérification des droits d'écriture pour www-data :"
+    for dir in "${STORAGE_DIRS[@]}"; do
+        if sudo -u www-data test -w "$dir"; then
+            print_message "✅ $dir : www-data peut écrire"
+        else
+            print_error "❌ $dir : www-data ne peut pas écrire"
+            print_message "Tentative de correction..."
+            sudo chmod -R 775 "$dir"
+            sudo chown -R $CURRENT_USER:www-data "$dir"
+            sudo setfacl -R -m u:www-data:rwx "$dir"
+            sudo setfacl -R -m u:$CURRENT_USER:rwx "$dir"
+            sudo setfacl -R -d -m u:www-data:rwx "$dir"
+            sudo setfacl -R -d -m u:$CURRENT_USER:rwx "$dir"
+            if sudo -u www-data test -w "$dir"; then
+                print_message "✅ Correction réussie"
+            else
+                print_error "❌ Échec de la correction"
+            fi
         fi
     done
 }
