@@ -1,20 +1,25 @@
 <?php
 
-use App\Core\Router;
+use Illuminate\Support\Facades\Route;
 
-$router = new Router();
+/*
+|--------------------------------------------------------------------------
+| Web Routes
+|--------------------------------------------------------------------------
+*/
 
-$router->get('/', 'home');
-$router->get('/about', 'about');
-$router->get('/contact', 'contact');
+Route::get('/', function () {
+    return view('welcome');
+});
 
-$router->get('/login', 'login');
-$router->post('/login', 'login');
-$router->get('/register', 'register');
-$router->post('/register', 'register');
-$router->get('/logout', 'logout');
+Route::middleware(['auth'])->group(function () {
+    Route::get('/dashboard', function () {
+        return view('dashboard');
+    })->name('dashboard');
+    
+    Route::resource('users', UserController::class);
+    Route::resource('roles', RoleController::class);
+    Route::resource('permissions', PermissionController::class);
+});
 
-$router->get('/profile', 'profile');
-$router->post('/profile', 'profile');
-$router->get('/settings', 'settings');
-$router->post('/settings', 'settings'); 
+require __DIR__.'/auth.php'; 
