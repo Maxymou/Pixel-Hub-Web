@@ -432,10 +432,17 @@ install_apache() {
     sudo chown -R root:adm /var/log/apache2
     sudo chmod -R 755 /var/log/apache2
     
+    # Vérifier la configuration Apache
+    print_message "Vérification de la configuration Apache..."
+    sudo apache2ctl configtest
+    
     # Démarrer Apache avec différentes méthodes
     print_message "Démarrage d'Apache..."
     
     # Méthode 1 : service
+    sudo service apache2 stop
+    sudo rm -f /var/run/apache2/apache2.pid
+    sudo rm -f /var/run/apache2/apache2.sock
     sudo service apache2 start
     sleep 2
     
@@ -446,6 +453,9 @@ install_apache() {
         print_warning "Échec de la méthode service, tentative avec init.d..."
         
         # Méthode 2 : init.d
+        sudo /etc/init.d/apache2 stop
+        sudo rm -f /var/run/apache2/apache2.pid
+        sudo rm -f /var/run/apache2/apache2.sock
         sudo /etc/init.d/apache2 start
         sleep 2
         
@@ -455,6 +465,9 @@ install_apache() {
             print_warning "Échec de la méthode init.d, tentative avec apache2ctl..."
             
             # Méthode 3 : apache2ctl
+            sudo apache2ctl stop
+            sudo rm -f /var/run/apache2/apache2.pid
+            sudo rm -f /var/run/apache2/apache2.sock
             sudo apache2ctl start
             sleep 2
             
@@ -468,10 +481,6 @@ install_apache() {
                     tail -n 10 /var/log/apache2/error.log
                 fi
                 
-                # Vérifier la configuration Apache
-                print_message "Vérification de la configuration Apache..."
-                sudo apache2ctl configtest
-                
                 # Vérifier les permissions des répertoires importants
                 print_message "Vérification des permissions..."
                 ls -la /var/www/html
@@ -483,6 +492,11 @@ install_apache() {
                 sudo service apache2 stop
                 sudo rm -f /var/run/apache2/apache2.pid
                 sudo rm -f /var/run/apache2/apache2.sock
+                sudo rm -rf /var/lock/apache2
+                sudo rm -rf /var/run/apache2
+                sudo mkdir -p /var/run/apache2
+                sudo chown -R www-data:www-data /var/run/apache2
+                sudo chmod -R 755 /var/run/apache2
                 sudo service apache2 start
                 sleep 2
                 
@@ -490,6 +504,10 @@ install_apache() {
                     print_message "✅ Apache démarré avec succès après redémarrage complet"
                 else
                     print_error "❌ Échec du démarrage d'Apache après toutes les tentatives"
+                    print_message "Vérification du statut systemd..."
+                    systemctl status apache2
+                    print_message "Vérification des logs systemd..."
+                    journalctl -xeu apache2.service
                     exit 1
                 fi
             fi
@@ -509,6 +527,8 @@ install_apache() {
             print_message "✅ Apache répond correctement"
         else
             print_warning "⚠️ Apache ne répond pas sur http://localhost"
+            print_message "Vérification des ports..."
+            netstat -tulpn | grep apache2
         fi
     else
         print_error "❌ Apache n'est pas en cours d'exécution après toutes les tentatives"
