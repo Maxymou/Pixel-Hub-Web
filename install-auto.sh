@@ -608,8 +608,66 @@ install_application() {
     print_message "Installation de l'application terminée"
 }
 
+# Fonction pour désinstaller l'application
+uninstall_application() {
+    print_message "\n[Désinstallation de l'application]"
+    
+    # Arrêter les services
+    print_message "Arrêt des services..."
+    sudo systemctl stop apache2
+    sudo systemctl stop mysql
+    
+    # Supprimer la base de données
+    print_message "Suppression de la base de données..."
+    sudo mysql -e "DROP DATABASE IF EXISTS pixel_hub;"
+    sudo mysql -e "DROP USER IF EXISTS 'pixel_hub'@'localhost';"
+    sudo mysql -e "FLUSH PRIVILEGES;"
+    
+    # Supprimer les fichiers de l'application
+    print_message "Suppression des fichiers de l'application..."
+    if [ -d "$APP_DIR" ]; then
+        sudo rm -rf "$APP_DIR"
+        print_message "✅ Répertoire de l'application supprimé"
+    fi
+    
+    # Supprimer les configurations Apache
+    print_message "Suppression des configurations Apache..."
+    if [ -f "/etc/apache2/sites-available/pixel-hub.conf" ]; then
+        sudo a2dissite pixel-hub.conf
+        sudo rm /etc/apache2/sites-available/pixel-hub.conf
+        print_message "✅ Configuration Apache supprimée"
+    fi
+    
+    # Supprimer les configurations PHP
+    print_message "Suppression des configurations PHP..."
+    if [ -f "/etc/php/conf.d/99-pixel-hub.ini" ]; then
+        sudo rm /etc/php/conf.d/99-pixel-hub.ini
+        print_message "✅ Configuration PHP supprimée"
+    fi
+    
+    # Désinstaller les paquets
+    print_message "Désinstallation des paquets..."
+    sudo apt remove -y apache2 php8.1* mysql-server
+    sudo apt autoremove -y
+    print_message "✅ Paquets désinstallés"
+    
+    # Nettoyer les répertoires de logs
+    print_message "Nettoyage des logs..."
+    sudo rm -rf /var/log/apache2/*
+    sudo rm -rf /var/log/mysql/*
+    print_message "✅ Logs nettoyés"
+    
+    print_message "Désinstallation terminée avec succès !"
+}
+
 # Fonction principale
 main() {
+    # Vérifier si c'est une désinstallation
+    if [ "$1" = "uninstall" ]; then
+        uninstall_application
+        exit 0
+    fi
+    
     print_message "Début de l'installation..."
     
     # Vérifier si on est sur un Raspberry Pi
@@ -633,6 +691,9 @@ main() {
     # Configuration de la base de données
     configure_database
     
+    # Installation de l'application
+    install_application
+    
     # Vérification finale de l'état d'installation
     print_message "=== Rapport final d'installation ==="
     check_installation_status
@@ -641,4 +702,4 @@ main() {
 }
 
 # Exécution du script
-main 
+main "$@" 
