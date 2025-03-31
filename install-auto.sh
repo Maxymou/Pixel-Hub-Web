@@ -29,6 +29,50 @@ check_command() {
     fi
 }
 
+# Fonction pour vérifier si on est sur un Raspberry Pi
+check_raspberry_pi() {
+    if [ ! -f "/proc/cpuinfo" ]; then
+        print_error "Ce script doit être exécuté sur un Raspberry Pi"
+        exit 1
+    fi
+    
+    if ! grep -q "Raspberry Pi" /proc/cpuinfo; then
+        print_error "Ce script doit être exécuté sur un Raspberry Pi"
+        exit 1
+    fi
+    
+    print_message "Détection du Raspberry Pi réussie"
+}
+
+# Fonction pour optimiser le système pour le Raspberry Pi
+optimize_raspberry_pi() {
+    print_message "Optimisation du système pour le Raspberry Pi..."
+    
+    # Désactiver les services non essentiels
+    sudo systemctl disable bluetooth
+    sudo systemctl disable cups
+    sudo systemctl disable triggerhappy
+    
+    # Optimiser la mémoire swap
+    if [ -f "/etc/dphys-swapfile" ]; then
+        sudo sed -i 's/CONF_SWAPSIZE=100/CONF_SWAPSIZE=2048/' /etc/dphys-swapfile
+        sudo dphys-swapfile setup
+        sudo dphys-swapfile swapon
+    fi
+    
+    # Optimiser les paramètres système
+    sudo tee /etc/sysctl.d/99-raspberry-pi.conf > /dev/null << EOL
+vm.swappiness=10
+vm.vfs_cache_pressure=50
+vm.dirty_ratio=40
+vm.dirty_background_ratio=10
+EOL
+    
+    sudo sysctl -p /etc/sysctl.d/99-raspberry-pi.conf
+    
+    print_message "Optimisation du système terminée"
+}
+
 # Fonction pour vérifier les droits d'accès
 check_permissions() {
     local dir=$1
@@ -319,6 +363,14 @@ check_installation_status() {
     print_message "\n[Mémoire]"
     free -h
     
+    # Vérifier la température du Raspberry Pi
+    if [ -f "/sys/class/thermal/thermal_zone0/temp" ]; then
+        TEMP=$(cat /sys/class/thermal/thermal_zone0/temp)
+        TEMP_C=$(echo "scale=1; $TEMP/1000" | bc)
+        print_message "\n[Température du Raspberry Pi]"
+        print_message "Température actuelle : ${TEMP_C}°C"
+    fi
+    
     print_message "\n=== Fin de la vérification détaillée ==="
 }
 
@@ -331,6 +383,12 @@ install_system_prerequisites() {
     sudo apt install -y curl git unzip
     check_command "Installation des outils de base réussie" "Échec de l'installation des outils de base"
     
+    # Configuration des permissions pour les outils de base
+    print_message "Configuration des permissions pour les outils de base..."
+    sudo chmod 755 /usr/bin/curl
+    sudo chmod 755 /usr/bin/git
+    sudo chmod 755 /usr/bin/unzip
+    
     # Vérifier l'état après l'installation des prérequis
     check_installation_status
 }
@@ -340,6 +398,15 @@ install_apache() {
     print_message "Installation d'Apache..."
     sudo apt install -y apache2
     check_command "Installation d'Apache réussie" "Échec de l'installation d'Apache"
+    
+    # Configuration des permissions Apache
+    print_message "Configuration des permissions Apache..."
+    sudo chown -R www-data:www-data /var/www/html
+    sudo chmod -R 755 /var/www/html
+    sudo chown -R root:root /etc/apache2
+    sudo chmod -R 755 /etc/apache2
+    sudo chown -R root:adm /var/log/apache2
+    sudo chmod -R 755 /var/log/apache2
     
     # Vérifier qu'Apache est en cours d'exécution
     sudo systemctl is-active --quiet apache2
@@ -374,6 +441,15 @@ install_php() {
     
     check_command "Installation de PHP et ses extensions réussie" "Échec de l'installation de PHP"
     
+    # Configuration des permissions PHP
+    print_message "Configuration des permissions PHP..."
+    sudo chown -R root:root /etc/php
+    sudo chmod -R 755 /etc/php
+    sudo chown -R www-data:www-data /var/lib/php
+    sudo chmod -R 755 /var/lib/php
+    sudo chown -R www-data:www-data /var/run/php
+    sudo chmod -R 755 /var/run/php
+    
     # Vérifier l'installation de PHP
     php -v
     check_command "PHP est correctement installé" "PHP n'est pas correctement installé"
@@ -388,6 +464,15 @@ install_mysql() {
     sudo apt install -y mysql-server
     check_command "Installation de MySQL réussie" "Échec de l'installation de MySQL"
     
+    # Configuration des permissions MySQL
+    print_message "Configuration des permissions MySQL..."
+    sudo chown -R mysql:mysql /var/lib/mysql
+    sudo chmod -R 755 /var/lib/mysql
+    sudo chown -R root:root /etc/mysql
+    sudo chmod -R 755 /etc/mysql
+    sudo chown -R mysql:adm /var/log/mysql
+    sudo chmod -R 755 /var/log/mysql
+    
     # Démarrer MySQL
     sudo systemctl start mysql
     check_command "Démarrage de MySQL réussi" "Échec du démarrage de MySQL"
@@ -400,28 +485,18 @@ install_mysql() {
     check_installation_status
 }
 
-# Fonction pour configurer Apache
-configure_apache() {
-    print_message "Configuration d'Apache..."
-    
-    # Activer les modules Apache nécessaires
-    sudo a2enmod rewrite
-    sudo a2enmod headers
-    sudo a2enmod ssl
-    
-    # Redémarrer Apache pour appliquer les changements
-    sudo systemctl restart apache2
-    check_command "Configuration d'Apache réussie" "Échec de la configuration d'Apache"
-    
-    # Vérifier l'état après la configuration d'Apache
-    check_installation_status
-}
-
 # Fonction pour installer Composer
 install_composer() {
     print_message "Installation de Composer..."
     curl -sS https://getcomposer.org/installer | sudo php -- --install-dir=/usr/local/bin --filename=composer
     check_command "Installation de Composer réussie" "Échec de l'installation de Composer"
+    
+    # Configuration des permissions Composer
+    print_message "Configuration des permissions Composer..."
+    sudo chown root:root /usr/local/bin/composer
+    sudo chmod 755 /usr/local/bin/composer
+    sudo chown -R $SUDO_USER:$SUDO_USER ~/.composer
+    sudo chmod -R 755 ~/.composer
 }
 
 # Fonction pour configurer la base de données
@@ -434,12 +509,23 @@ configure_database() {
     sudo mysql -e "GRANT ALL PRIVILEGES ON pixel_hub.* TO 'pixel_hub'@'localhost';"
     sudo mysql -e "FLUSH PRIVILEGES;"
     
+    # Configuration des permissions de la base de données
+    print_message "Configuration des permissions de la base de données..."
+    sudo chown -R mysql:mysql /var/lib/mysql/pixel_hub
+    sudo chmod -R 750 /var/lib/mysql/pixel_hub
+    
     check_command "Configuration de la base de données réussie" "Échec de la configuration de la base de données"
 }
 
 # Fonction principale
 main() {
     print_message "Début de l'installation..."
+    
+    # Vérifier si on est sur un Raspberry Pi
+    check_raspberry_pi
+    
+    # Optimiser le système pour le Raspberry Pi
+    optimize_raspberry_pi
     
     # Installation des prérequis système
     install_system_prerequisites
@@ -452,12 +538,6 @@ main() {
     
     # Installation de MySQL
     install_mysql
-    
-    # Configuration d'Apache
-    configure_apache
-    
-    # Installation de Composer
-    install_composer
     
     # Configuration de la base de données
     configure_database
