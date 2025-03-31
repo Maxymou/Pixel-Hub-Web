@@ -1,75 +1,89 @@
 # Pixel Hub Web
 
-Pixel Hub Web est une application web responsive permettant de gérer et lancer des applications et jeux depuis une interface unifiée. Elle est conçue pour fonctionner sur tous les appareils (desktop, tablette, smartphone) et offre une expérience utilisateur optimisée.
+Pixel Hub Web est une application web pour gérer vos pixels et vos projets.
 
-## Installation rapide
+## Prérequis
 
-Pour installer Pixel Hub Web en une seule commande, exécutez :
+- PHP 8.0 ou supérieur
+- Composer
+- MySQL 5.7 ou supérieur
+- Apache 2.4 ou supérieur
 
+## Installation
+
+1. Clonez le dépôt :
 ```bash
-curl -s https://raw.githubusercontent.com/Maxymou/pixel-hub-web/main/install-auto.sh | sudo bash
+git clone https://github.com/Maxymou/pixel-hub-web.git
+cd pixel-hub-web
 ```
 
-Cette commande va :
-1. Installer tous les prérequis nécessaires
-2. Configurer l'environnement
-3. Installer l'application
-4. Configurer la base de données
-5. Créer un utilisateur administrateur
+2. Installez les dépendances :
+```bash
+composer install
+```
 
-Suivez les instructions à l'écran pour compléter l'installation.
+3. Copiez le fichier .env.example en .env :
+```bash
+cp .env.example .env
+```
 
-## Installation sur Raspberry Pi
+4. Générez la clé d'application :
+```bash
+php artisan key:generate
+```
 
-### Prérequis
-- Raspberry Pi 3 ou supérieur (recommandé)
-- Raspberry Pi OS Lite (recommandé)
-- Carte microSD de 16GB minimum
-- Alimentation adaptée (5V/2.5A minimum)
+5. Configurez votre base de données dans le fichier .env :
+```env
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=pixel_hub
+DB_USERNAME=pixel_hub
+DB_PASSWORD=1234
+```
 
-### Étapes d'installation
+6. Créez la base de données et l'utilisateur :
+```bash
+mysql -u root -p
+```
 
-1. **Préparation de la carte microSD**
-   - Téléchargez Raspberry Pi OS Lite depuis [raspberrypi.org](https://www.raspberrypi.org/software/operating-systems/)
-   - Utilisez Raspberry Pi Imager pour graver l'image
-   - Activez SSH dans les options avancées de Raspberry Pi Imager
+```sql
+CREATE DATABASE pixel_hub;
+CREATE USER 'pixel_hub'@'localhost' IDENTIFIED BY '1234';
+GRANT ALL PRIVILEGES ON pixel_hub.* TO 'pixel_hub'@'localhost';
+FLUSH PRIVILEGES;
+```
 
-2. **Configuration initiale**
-   ```bash
-   # Connectez-vous à votre Raspberry Pi via SSH
-   ssh pi@<adresse_ip_raspberry_pi>
-   
-   # Changez le mot de passe par défaut
-   passwd
-   
-   # Mettez à jour le système
-   sudo apt update && sudo apt upgrade -y
-   ```
+7. Exécutez les migrations :
+```bash
+php artisan migrate
+```
 
-3. **Installation de Pixel Hub Web**
-   ```bash
-   curl -s https://raw.githubusercontent.com/Maxymou/pixel-hub-web/main/install-auto.sh | sudo bash
-   ```
+8. Configurez Apache :
+```bash
+sudo cp pixel-hub.conf /etc/apache2/sites-available/
+sudo a2ensite pixel-hub
+sudo systemctl restart apache2
+```
 
-4. **Configuration du réseau**
-   - Notez l'adresse IP de votre Raspberry Pi
-   - Vous pourrez accéder à Pixel Hub Web depuis n'importe quel appareil sur votre réseau en utilisant cette adresse IP
+## Utilisation
 
-### Optimisations pour Raspberry Pi
-Le script d'installation détecte automatiquement si vous êtes sur un Raspberry Pi et applique les optimisations suivantes :
-- Réduction de la consommation mémoire
-- Optimisation des paramètres PHP
-- Configuration adaptée pour les ressources limitées
+1. Accédez à l'application via votre navigateur :
+```
+http://localhost
+```
 
-### Dépannage
-Si vous rencontrez des problèmes de performance :
-1. Vérifiez la température du Raspberry Pi : `vcgencmd measure_temp`
-2. Surveillez l'utilisation mémoire : `free -m`
-3. Vérifiez les logs : `sudo journalctl -u apache2`
+2. Connectez-vous avec les identifiants par défaut :
+- Email : admin@example.com
+- Mot de passe : password
 
-## Installation manuelle
+## Contribution
 
-Si vous préférez une installation manuelle, suivez ces étapes :
+Les contributions sont les bienvenues ! N'hésitez pas à ouvrir une issue ou à soumettre une pull request.
+
+## Licence
+
+Ce projet est sous licence MIT. Voir le fichier [LICENSE](LICENSE) pour plus de détails.
 
 ## Fonctionnalités
 
@@ -81,45 +95,6 @@ Si vous préférez une installation manuelle, suivez ces étapes :
 - 📱 Interface responsive
 - 🔒 Sécurité renforcée
 - ⚡ Performance optimisée
-
-## Prérequis
-
-- PHP 8.1 ou supérieur
-- MySQL 5.7 ou supérieur
-- Apache 2.4 ou supérieur
-- Composer
-- Git
-
-## Installation
-
-1. **Cloner le dépôt**
-```bash
-git clone https://github.com/Maxymou/pixel-hub-web.git
-cd pixel-hub-web
-```
-
-2. **Installer les dépendances**
-```bash
-composer install
-```
-
-3. **Configurer l'environnement**
-```bash
-cp .env.example .env
-```
-
-4. **Exécuter le script d'installation**
-```bash
-chmod +x install.sh scripts/preinstall.sh scripts/uninstall.sh
-sudo ./scripts/preinstall.sh
-sudo ./install.sh
-```
-
-5. **Configurer les permissions**
-```bash
-sudo chown -R www-data:www-data public/uploads
-sudo chmod -R 755 public/uploads
-```
 
 ## Configuration
 
@@ -139,20 +114,6 @@ Pour activer SSL en production :
 ```bash
 sudo ./scripts/ssl-setup.sh
 ```
-
-## Utilisation
-
-1. **Accéder à l'application**
-- Ouvrez votre navigateur
-- Accédez à `http://votre-domaine.com`
-- Connectez-vous avec les identifiants par défaut :
-  - Utilisateur : admin
-  - Mot de passe : admin123
-
-2. **Première connexion**
-- Changez immédiatement le mot de passe administrateur
-- Configurez les paramètres de base
-- Ajoutez vos premières applications
 
 ## Développement
 

@@ -68,54 +68,30 @@ backup_config() {
 check_prerequisites() {
     print_message "Vérification des prérequis..." "$YELLOW"
     
-    # Vérifier la connexion internet
-    print_message "Vérification de la connexion internet..." "$YELLOW"
-    if ping -c 1 google.com &> /dev/null; then
-        print_message "Connexion internet vérifiée." "$GREEN"
-    else
-        print_message "ERREUR: Pas de connexion internet." "$RED"
-        exit 1
-    fi
-    
-    # Installer bc si nécessaire
-    if ! command -v bc &> /dev/null; then
-        print_message "Installation de bc..." "$YELLOW"
-        sudo apt-get update
-        sudo apt-get install -y bc
-    fi
+    # Mise à jour du système
+    sudo apt update
+    sudo apt upgrade -y
+    sudo apt update
     
     # Vérifier la version de PHP
-    print_message "Vérification de la version de PHP..." "$YELLOW"
-    PHP_VERSION=$(php -v | head -n 1 | cut -d " " -f 2 | cut -d "." -f 1,2)
-    if [ $(echo "$PHP_VERSION >= 7.4" | bc) -eq 1 ]; then
-        print_message "Version de PHP vérifiée : $PHP_VERSION" "$GREEN"
-    else
-        print_message "ERREUR: PHP 7.4 ou supérieur requis." "$RED"
-        exit 1
-    fi
-    
-    # Vérifier les commandes requises
-    for cmd in php mysql apache2ctl composer git; do
-        if ! command -v $cmd &> /dev/null; then
-            print_message "ERREUR: $cmd n'est pas installé" "$RED"
+    if command -v php &> /dev/null; then
+        PHP_VERSION=$(php -v | head -n 1 | cut -d " " -f 2 | cut -d "." -f 1,2)
+        if [ $(echo "$PHP_VERSION >= 7.4" | bc) -eq 1 ]; then
+            print_message "Version de PHP vérifiée : $PHP_VERSION" "$GREEN"
+        else
+            print_message "ERREUR: PHP 7.4 ou supérieur requis." "$RED"
             exit 1
         fi
-    done
-    
-    # Vérifier l'espace disque
-    DISK_SPACE=$(df -m / | awk 'NR==2 {print $4}')
-    if [ "$DISK_SPACE" -lt 1000 ]; then
-        print_message "ERREUR: Moins de 1GB d'espace disque disponible" "$RED"
-        exit 1
     fi
-    
-    # Vérifier la mémoire
-    MEMORY=$(free -m | awk 'NR==2 {print $2}')
-    if [ "$MEMORY" -lt 512 ]; then
-        print_message "ERREUR: Moins de 512MB de RAM disponible" "$RED"
-        exit 1
+
+    # Vérifier si Apache fonctionne
+    if wget -O check_apache.html http://127.0.0.1 &> /dev/null; then
+        if grep -q "It works" check_apache.html; then
+            print_message "Apache fonctionne correctement" "$GREEN"
+            rm check_apache.html
+        fi
     fi
-    
+
     print_message "Prérequis vérifiés avec succès." "$GREEN"
 }
 
@@ -198,6 +174,35 @@ install_prerequisites() {
     sudo tee /etc/environment.d/composer.conf > /dev/null << EOL
 COMPOSER_ALLOW_SUPERUSER=1
 EOL
+    
+    # Extensions PHP pour le développement web
+    sudo apt-get install -y \
+        php7.4-intl \
+        php7.4-ldap \
+        php7.4-imap \
+        php7.4-soap \
+        php7.4-tidy \
+        php7.4-xmlrpc \
+        php7.4-xsl
+
+    # Extensions PHP pour le cache et la performance
+    sudo apt-get install -y \
+        php7.4-memcached \
+        php7.4-redis \
+        php7.4-apcu
+
+    # Extensions PHP pour les bases de données
+    sudo apt-get install -y \
+        php7.4-mysql \
+        php7.4-pgsql \
+        php7.4-sqlite3 \
+        php7.4-mongodb
+
+    # Configurer Apache
+    sudo a2enmod rewrite
+    sudo a2enmod headers
+    sudo a2enmod ssl
+    sudo systemctl restart apache2
     
     print_message "Prérequis installés avec succès." "$GREEN"
 }
@@ -1040,6 +1045,44 @@ generate_summary() {
     
     print_message "\n=== Fin du récapitulatif ===" "$YELLOW"
     print_message "\nSi vous rencontrez des problèmes, veuillez fournir ce récapitulatif pour faciliter le diagnostic." "$YELLOW"
+}
+
+# Configuration pour l'accès externe
+configure_external_access() {
+    print_message "Configuration de l'accès externe..." "$YELLOW"
+    
+    # Obtenir l'adresse IP
+    IP_ADDRESS=$(hostname -I | awk '{print $1}')
+    
+    # Configurer Apache pour écouter sur toutes les interfaces
+    sudo sed -i 's/Listen 80/Listen *:80/' /etc/apache2/ports.conf
+    
+    # Créer le virtual host
+    cat > /etc/apache2/sites-available/pixel-hub.conf << EOL
+<VirtualHost *:80>
+    ServerAdmin webmaster@localhost
+    DocumentRoot /var/www/html
+    ServerName $IP_ADDRESS
+    
+    <Directory /var/www/html>
+        Options Indexes FollowSymLinks MultiViews
+        AllowOverride All
+        Require all granted
+    </Directory>
+    
+    ErrorLog \${APACHE_LOG_DIR}/error.log
+    CustomLog \${APACHE_LOG_DIR}/access.log combined
+</VirtualHost>
+EOL
+    
+    # Activer le site et redémarrer Apache
+    sudo a2ensite pixel-hub.conf
+    sudo a2dissite 000-default.conf
+    sudo systemctl restart apache2
+    
+    print_message "Configuration de l'accès externe terminée" "$GREEN"
+    print_message "Votre serveur est accessible à l'adresse : http://$IP_ADDRESS" "$GREEN"
+    print_message "Note : Pour un accès depuis Internet, configurez la redirection de port sur votre routeur" "$YELLOW"
 }
 
 # Fonction principale
