@@ -682,6 +682,10 @@ install_application() {
 uninstall_application() {
     print_message "\n[Désinstallation de l'application]"
     
+    # Obtenir l'utilisateur actuel
+    CURRENT_USER=$(whoami)
+    APP_DIR="/var/www/pixel-hub-web"
+    
     # Arrêter les services
     print_message "Arrêt des services..."
     sudo systemctl stop apache2
@@ -693,10 +697,16 @@ uninstall_application() {
     sudo mysql -e "DROP USER IF EXISTS 'pixel_hub'@'localhost';"
     sudo mysql -e "FLUSH PRIVILEGES;"
     
-    # Supprimer les fichiers de l'application
-    print_message "Suppression des fichiers de l'application..."
+    # Corriger les permissions avant la suppression
+    print_message "Correction des permissions avant la suppression..."
     if [ -d "$APP_DIR" ]; then
-        sudo rm -rf "$APP_DIR"
+        # Donner les permissions complètes à l'utilisateur actuel
+        sudo chown -R $CURRENT_USER:$CURRENT_USER "$APP_DIR"
+        sudo chmod -R 777 "$APP_DIR"
+        
+        # Supprimer les fichiers
+        print_message "Suppression des fichiers de l'application..."
+        rm -rf "$APP_DIR"
         print_message "✅ Répertoire de l'application supprimé"
     fi
     
@@ -726,6 +736,11 @@ uninstall_application() {
     sudo rm -rf /var/log/apache2/*
     sudo rm -rf /var/log/mysql/*
     print_message "✅ Logs nettoyés"
+    
+    # Nettoyer le cache de Composer
+    print_message "Nettoyage du cache de Composer..."
+    rm -rf ~/.composer/cache/*
+    print_message "✅ Cache de Composer nettoyé"
     
     print_message "Désinstallation terminée avec succès !"
 }
