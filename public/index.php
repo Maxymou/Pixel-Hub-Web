@@ -1,24 +1,14 @@
 <?php
 
-require_once __DIR__ . '/../vendor/autoload.php';
-
 use App\Core\Application;
+use App\Core\Router;
 
-// Définition des constantes
-define('ROOT_PATH', dirname(__DIR__));
-define('APP_PATH', ROOT_PATH . '/src');
+require_once __DIR__.'/../vendor/autoload.php';
 
-// Gestion des erreurs en développement
-if ($_ENV['APP_DEBUG'] ?? false) {
-    ini_set('display_errors', 1);
-    ini_set('display_startup_errors', 1);
-    error_reporting(E_ALL);
-} else {
-    ini_set('display_errors', 0);
-    ini_set('display_startup_errors', 0);
-    error_reporting(0);
-}
+$app = new Application(dirname(__DIR__));
 
-// Démarrage de l'application
-$app = Application::getInstance();
+$router = new Router();
+
+require_once __DIR__.'/../routes/web.php';
+
 $app->run(); 
