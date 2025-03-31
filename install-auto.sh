@@ -429,6 +429,52 @@ install_apache() {
     sudo chmod -R 755 /var/www/pixel-hub-web
     
     # Configuration d'Apache
+    print_message "Configuration d'Apache..."
+    
+    # Sauvegarder la configuration originale
+    sudo cp /etc/apache2/apache2.conf /etc/apache2/apache2.conf.backup
+    
+    # Créer une nouvelle configuration Apache
+    sudo tee /etc/apache2/apache2.conf > /dev/null << EOL
+# Configuration globale d'Apache
+DefaultRuntimeDir ${APACHE_RUN_DIR}
+PidFile ${APACHE_PID_FILE}
+Timeout 300
+KeepAlive On
+MaxKeepAliveRequests 100
+KeepAliveTimeout 5
+
+# Configuration des répertoires
+<Directory />
+    Options FollowSymLinks
+    AllowOverride None
+    Require all denied
+</Directory>
+
+<Directory /var/www/>
+    Options Indexes FollowSymLinks
+    AllowOverride All
+    Require all granted
+</Directory>
+
+# Configuration des logs
+ErrorLog ${APACHE_LOG_DIR}/error.log
+LogLevel warn
+
+# Configuration des modules
+LoadModule rewrite_module /usr/lib/apache2/modules/mod_rewrite.so
+LoadModule headers_module /usr/lib/apache2/modules/mod_headers.so
+LoadModule ssl_module /usr/lib/apache2/modules/mod_ssl.so
+
+# Configuration des ports
+Listen 80
+Listen 443
+
+# Configuration des virtual hosts
+IncludeOptional sites-enabled/*.conf
+EOL
+    
+    # Configuration des modules
     sudo a2enmod rewrite
     sudo a2enmod headers
     sudo a2enmod ssl
@@ -451,10 +497,8 @@ install_apache() {
     print_message "Vérification de la configuration Apache..."
     sudo apache2ctl configtest
     
-    # Démarrer Apache avec différentes méthodes
+    # Démarrer Apache
     print_message "Démarrage d'Apache..."
-    
-    # Méthode 1 : service
     sudo service apache2 stop
     sudo rm -f /var/run/apache2/apache2.pid
     sudo rm -f /var/run/apache2/apache2.sock
@@ -463,70 +507,15 @@ install_apache() {
     
     # Vérifier si Apache est en cours d'exécution
     if pgrep -x "apache2" > /dev/null; then
-        print_message "✅ Apache démarré avec succès (méthode service)"
+        print_message "✅ Apache démarré avec succès"
     else
-        print_warning "Échec de la méthode service, tentative avec init.d..."
-        
-        # Méthode 2 : init.d
-        sudo /etc/init.d/apache2 stop
-        sudo rm -f /var/run/apache2/apache2.pid
-        sudo rm -f /var/run/apache2/apache2.sock
-        sudo /etc/init.d/apache2 start
-        sleep 2
-        
-        if pgrep -x "apache2" > /dev/null; then
-            print_message "✅ Apache démarré avec succès (méthode init.d)"
-        else
-            print_warning "Échec de la méthode init.d, tentative avec apache2ctl..."
-            
-            # Méthode 3 : apache2ctl
-            sudo apache2ctl stop
-            sudo rm -f /var/run/apache2/apache2.pid
-            sudo rm -f /var/run/apache2/apache2.sock
-            sudo apache2ctl start
-            sleep 2
-            
-            if pgrep -x "apache2" > /dev/null; then
-                print_message "✅ Apache démarré avec succès (méthode apache2ctl)"
-            else
-                print_error "❌ Échec du démarrage d'Apache"
-                print_message "Vérification des logs Apache..."
-                if [ -f "/var/log/apache2/error.log" ]; then
-                    print_message "Dernières erreurs Apache :"
-                    tail -n 10 /var/log/apache2/error.log
-                fi
-                
-                # Vérifier les permissions des répertoires importants
-                print_message "Vérification des permissions..."
-                ls -la /var/www/html
-                ls -la /etc/apache2
-                ls -la /var/log/apache2
-                
-                # Tentative de redémarrage complet
-                print_message "Tentative de redémarrage complet..."
-                sudo service apache2 stop
-                sudo rm -f /var/run/apache2/apache2.pid
-                sudo rm -f /var/run/apache2/apache2.sock
-                sudo rm -rf /var/lock/apache2
-                sudo rm -rf /var/run/apache2
-                sudo mkdir -p /var/run/apache2
-                sudo chown -R www-data:www-data /var/run/apache2
-                sudo chmod -R 755 /var/run/apache2
-                sudo service apache2 start
-                sleep 2
-                
-                if pgrep -x "apache2" > /dev/null; then
-                    print_message "✅ Apache démarré avec succès après redémarrage complet"
-                else
-                    print_error "❌ Échec du démarrage d'Apache après toutes les tentatives"
-                    print_message "Vérification du statut systemd..."
-                    systemctl status apache2
-                    print_message "Vérification des logs systemd..."
-                    journalctl -xeu apache2.service
-                    exit 1
-                fi
-            fi
+        print_error "❌ Échec du démarrage d'Apache"
+        print_message "Vérification des logs Apache..."
+        if [ -f "/var/log/apache2/error.log" ]; then
+            print_message "Dernières erreurs Apache :"
+            tail -n 10 /var/log/apache2/error.log
         fi
+        exit 1
     fi
     
     # Vérification finale
@@ -546,7 +535,7 @@ install_apache() {
             netstat -tulpn | grep apache2
         fi
     else
-        print_error "❌ Apache n'est pas en cours d'exécution après toutes les tentatives"
+        print_error "❌ Apache n'est pas en cours d'exécution"
         exit 1
     fi
 }
