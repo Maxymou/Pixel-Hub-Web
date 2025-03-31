@@ -432,27 +432,67 @@ install_apache() {
     sudo chown -R root:adm /var/log/apache2
     sudo chmod -R 755 /var/log/apache2
     
-    # Démarrer Apache avec service au lieu de systemctl
+    # Démarrer Apache avec différentes méthodes
     print_message "Démarrage d'Apache..."
-    sudo service apache2 start
     
-    # Vérification du statut
+    # Méthode 1 : service
+    sudo service apache2 start
+    sleep 2
+    
+    # Vérifier si Apache est en cours d'exécution
     if pgrep -x "apache2" > /dev/null; then
-        print_message "✅ Apache installé et démarré avec succès"
+        print_message "✅ Apache démarré avec succès (méthode service)"
     else
-        print_error "❌ Échec du démarrage d'Apache"
-        print_message "Tentative de démarrage alternative..."
+        print_warning "Échec de la méthode service, tentative avec init.d..."
+        
+        # Méthode 2 : init.d
         sudo /etc/init.d/apache2 start
+        sleep 2
+        
         if pgrep -x "apache2" > /dev/null; then
-            print_message "✅ Apache démarré avec succès"
+            print_message "✅ Apache démarré avec succès (méthode init.d)"
         else
-            print_error "❌ Échec du démarrage d'Apache"
-            print_message "Vérification des logs Apache..."
-            if [ -f "/var/log/apache2/error.log" ]; then
-                tail -n 10 /var/log/apache2/error.log
+            print_warning "Échec de la méthode init.d, tentative avec apache2ctl..."
+            
+            # Méthode 3 : apache2ctl
+            sudo apache2ctl start
+            sleep 2
+            
+            if pgrep -x "apache2" > /dev/null; then
+                print_message "✅ Apache démarré avec succès (méthode apache2ctl)"
+            else
+                print_error "❌ Échec du démarrage d'Apache"
+                print_message "Vérification des logs Apache..."
+                if [ -f "/var/log/apache2/error.log" ]; then
+                    print_message "Dernières erreurs Apache :"
+                    tail -n 10 /var/log/apache2/error.log
+                fi
+                
+                # Vérifier la configuration Apache
+                print_message "Vérification de la configuration Apache..."
+                sudo apache2ctl configtest
+                
+                # Vérifier les permissions des répertoires importants
+                print_message "Vérification des permissions..."
+                ls -la /var/www/html
+                ls -la /etc/apache2
+                ls -la /var/log/apache2
+                
+                exit 1
             fi
-            exit 1
         fi
+    fi
+    
+    # Vérification finale
+    print_message "Vérification finale d'Apache..."
+    if pgrep -x "apache2" > /dev/null; then
+        print_message "✅ Apache est en cours d'exécution"
+        print_message "Version : $(apache2 -v | head -n 1)"
+        print_message "Modules activés :"
+        apache2ctl -M | grep -i "rewrite\|ssl\|headers"
+    else
+        print_error "❌ Apache n'est pas en cours d'exécution après toutes les tentatives"
+        exit 1
     fi
 }
 
