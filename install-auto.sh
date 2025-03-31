@@ -529,6 +529,85 @@ configure_database() {
     check_command "Configuration de la base de données réussie" "Échec de la configuration de la base de données"
 }
 
+# Fonction pour définir les permissions de l'application
+set_application_permissions() {
+    print_message "\n[Définition des permissions de l'application]"
+    
+    # Obtenir l'utilisateur actuel
+    CURRENT_USER=$(whoami)
+    APP_DIR="/var/www/pixel-hub-web"
+    
+    print_message "Définition des permissions pour $APP_DIR..."
+    
+    # Permissions pour le répertoire principal
+    sudo chown -R $CURRENT_USER:www-data "$APP_DIR"
+    sudo chmod -R 755 "$APP_DIR"
+    
+    # Permissions pour les répertoires spécifiques
+    DIRS=(
+        "$APP_DIR/storage"
+        "$APP_DIR/bootstrap/cache"
+        "$APP_DIR/public/uploads"
+    )
+    
+    for dir in "${DIRS[@]}"; do
+        if [ -d "$dir" ]; then
+            print_message "Configuration des permissions pour : $dir"
+            sudo chmod -R 775 "$dir"
+            sudo chown -R $CURRENT_USER:www-data "$dir"
+        else
+            print_message "Création du répertoire : $dir"
+            sudo mkdir -p "$dir"
+            sudo chmod -R 775 "$dir"
+            sudo chown -R $CURRENT_USER:www-data "$dir"
+        fi
+    done
+    
+    # Vérification des permissions
+    print_message "\nVérification des permissions :"
+    for dir in "${DIRS[@]}"; do
+        if [ -w "$dir" ]; then
+            print_message "✅ $dir : Permissions correctes"
+            print_message "  Propriétaire : $(stat -c '%U:%G' $dir)"
+            print_message "  Permissions : $(stat -c '%a' $dir)"
+        else
+            print_error "❌ $dir : Problème de permissions"
+            print_message "  Propriétaire actuel : $(stat -c '%U:%G' $dir)"
+            print_message "  Permissions actuelles : $(stat -c '%a' $dir)"
+        fi
+    done
+}
+
+# Fonction pour installer l'application
+install_application() {
+    print_message "\n[Installation de l'application]"
+    
+    # Cloner le dépôt
+    if [ ! -d "$APP_DIR" ]; then
+        print_message "Clonage du dépôt..."
+        git clone "$REPO_URL" "$APP_DIR"
+    fi
+    
+    # Aller dans le répertoire de l'application
+    cd "$APP_DIR"
+    
+    # Installer les dépendances
+    print_message "Installation des dépendances..."
+    composer install --no-interaction
+    
+    # Définir les permissions
+    set_application_permissions
+    
+    # Copier le fichier .env
+    if [ ! -f "$APP_DIR/.env" ]; then
+        print_message "Configuration de l'environnement..."
+        cp .env.example .env
+        php artisan key:generate
+    fi
+    
+    print_message "Installation de l'application terminée"
+}
+
 # Fonction principale
 main() {
     print_message "Début de l'installation..."
