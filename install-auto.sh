@@ -475,121 +475,77 @@ MYSQL_SCRIPT
 
 # Fonction pour installer l'application
 install_application() {
-    print_message "Installation de l'application..." "$YELLOW"
+    echo -e "${BLUE}Installation de l'application...${NC}"
     
-    # Supprimer le répertoire existant s'il existe
-    if [ -d "/var/www/pixel-hub" ]; then
-        print_message "Le répertoire /var/www/pixel-hub existe déjà. Suppression..." "$YELLOW"
-        sudo rm -rf /var/www/pixel-hub
-    fi
+    # Créer le dossier temporaire
+    mkdir -p /tmp/pixel-hub-web
+    cd /tmp/pixel-hub-web
     
-    # Créer un répertoire temporaire
-    TEMP_DIR=$(mktemp -d)
-    print_message "Création d'un répertoire temporaire..." "$YELLOW"
+    # Cloner le repository
+    git clone https://github.com/Maxymou/pixel-hub-web.git .
     
-    # Cloner le dépôt dans le répertoire temporaire
-    print_message "Clonage du dépôt..." "$YELLOW"
-    git clone https://github.com/Maxymou/pixel-hub-web.git "$TEMP_DIR"
-    check_error "Échec du clonage du dépôt"
+    # Créer les dossiers nécessaires
+    mkdir -p storage/logs storage/framework/cache storage/framework/sessions storage/framework/views bootstrap/cache public/uploads
     
-    # Créer le répertoire final
-    sudo mkdir -p /var/www/pixel-hub
-    check_error "Échec de la création du répertoire"
+    # Copier les fichiers de configuration
+    cp .env.example .env
     
-    # Copier les fichiers du répertoire temporaire vers le répertoire final
-    print_message "Copie des fichiers..." "$YELLOW"
-    sudo cp -r "$TEMP_DIR"/* /var/www/pixel-hub/
-    check_error "Échec de la copie des fichiers"
+    # Configurer le fichier .env
+    sed -i "s/DB_DATABASE=laravel/DB_DATABASE=pixel_hub/" .env
+    sed -i "s/DB_USERNAME=root/DB_USERNAME=pixel_hub/" .env
+    sed -i "s/DB_PASSWORD=/DB_PASSWORD=1234/" .env
+    sed -i "s/APP_URL=http:\/\/localhost/APP_URL=http:\/\/$(get_ip_address)/" .env
+    sed -i "s/APP_ENV=local/APP_ENV=production/" .env
+    sed -i "s/APP_DEBUG=true/APP_DEBUG=false/" .env
     
-    # Supprimer le répertoire temporaire
-    rm -rf "$TEMP_DIR"
-    
-    # Aller dans le répertoire de l'application
-    cd /var/www/pixel-hub
-    
-    # Créer les répertoires nécessaires
-    print_message "Création des répertoires nécessaires..." "$YELLOW"
-    sudo mkdir -p storage/logs
-    sudo mkdir -p storage/framework/cache
-    sudo mkdir -p storage/framework/sessions
-    sudo mkdir -p storage/framework/views
-    sudo mkdir -p bootstrap/cache
-    sudo mkdir -p public/uploads
-    
-    # Configurer les permissions
-    sudo chown -R www-data:www-data .
-    sudo chmod -R 755 .
-    sudo chmod -R 775 storage bootstrap/cache
-    sudo chmod -R 775 public/uploads
-    
-    # Créer les fichiers de configuration
-    print_message "Création des fichiers de configuration..." "$YELLOW"
-    create_php_config
-    create_env_file
-    create_composer_lock
-    
-    # Installer les dépendances avec Composer
-    print_message "Installation des dépendances avec Composer..." "$YELLOW"
-    export COMPOSER_ALLOW_SUPERUSER=1
-    
-    # Nettoyer l'environnement Composer
-    rm -rf vendor composer.lock
-    composer clear-cache
-    
-    # Installer les dépendances en utilisant composer.json
-    print_message "Installation des dépendances..." "$YELLOW"
-    
-    # Créer un fichier composer.lock vide
-    cat > composer.lock << EOL
-{
-    "_readme": [
-        "This file locks the dependencies of your project to a known state",
-        "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
-        "This file is @generated automatically"
-    ],
-    "content-hash": "generated",
-    "packages": [],
-    "packages-dev": [],
-    "aliases": [],
-    "minimum-stability": "stable",
-    "stability-flags": [],
-    "prefer-stable": false,
-    "prefer-lowest": false,
-    "platform": {
-        "php": ">=7.4"
-    },
-    "platform-dev": [],
-    "plugin-api-version": "2.0.0"
-}
-EOL
+    # Supprimer le fichier composer.lock s'il existe
+    rm -f composer.lock
     
     # Installer les dépendances
-    composer update --no-dev --optimize-autoloader --no-interaction
-    check_error "Échec de l'installation des dépendances Composer"
+    composer install --no-interaction --no-dev --optimize-autoloader
     
-    # Optimiser l'autoloader
-    composer dump-autoload --optimize --no-dev
+    # Générer la clé d'application
+    php artisan key:generate
+    
+    # Nettoyer le cache
+    php artisan config:clear
+    php artisan cache:clear
+    php artisan route:clear
+    php artisan view:clear
+    
+    # Optimiser l'application
+    php artisan config:cache
+    php artisan route:cache
+    php artisan view:cache
+    
+    # Copier les fichiers vers le dossier d'installation
+    cp -r * /var/www/pixel-hub-web/
+    cp -r .env /var/www/pixel-hub-web/
+    cp -r .git /var/www/pixel-hub-web/
+    
+    # Définir les permissions
+    chown -R www-data:www-data /var/www/pixel-hub-web
+    chmod -R 755 /var/www/pixel-hub-web
+    chmod -R 775 /var/www/pixel-hub-web/storage
+    chmod -R 775 /var/www/pixel-hub-web/bootstrap/cache
     
     # Configurer la base de données
-    configure_database
+    cd /var/www/pixel-hub-web
+    php artisan migrate --force
     
-    # Créer l'utilisateur administrateur
-    read -p "Entrez le nom d'utilisateur admin : " ADMIN_USERNAME
-    read -s -p "Entrez le mot de passe admin : " ADMIN_PASSWORD
-    echo
+    # Créer l'utilisateur admin
+    php artisan tinker --execute="
+        \App\Models\User::create([
+            'name' => 'Admin',
+            'email' => 'admin@pixel-hub.com',
+            'password' => Hash::make('admin123')
+        ]);
+    "
     
-    # Créer le fichier de configuration de l'administrateur
-    mkdir -p config
-    cat > config/admin.php << EOL
-<?php
-return [
-    'username' => '$ADMIN_USERNAME',
-    'password' => password_hash('$ADMIN_PASSWORD', PASSWORD_DEFAULT),
-    'is_admin' => true
-];
-EOL
+    # Nettoyer le dossier temporaire
+    rm -rf /tmp/pixel-hub-web
     
-    print_message "Application installée avec succès." "$GREEN"
+    echo -e "${GREEN}Installation de l'application terminée${NC}"
 }
 
 # Fonction pour obtenir l'adresse IP
