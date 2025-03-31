@@ -502,6 +502,47 @@ install_application() {
     mkdir -p app/Exceptions
     mkdir -p config
     
+    # Créer le fichier composer.json
+    cat > composer.json << 'EOL'
+{
+    "name": "maxymou/pixel-hub-web",
+    "description": "Application web responsive pour gérer et lancer des applications et jeux",
+    "type": "project",
+    "require": {
+        "php": ">=7.4",
+        "laravel/framework": "^8.0",
+        "ext-json": "*",
+        "ext-pdo": "*",
+        "ext-mbstring": "*",
+        "ext-curl": "*",
+        "ext-gd": "*",
+        "ext-zip": "*",
+        "ext-bcmath": "*",
+        "ext-xml": "*",
+        "ext-intl": "*",
+        "ext-ldap": "*",
+        "ext-redis": "*",
+        "ext-imagick": "*",
+        "vlucas/phpdotenv": "^5.5",
+        "monolog/monolog": "^2.9",
+        "firebase/php-jwt": "^6.4"
+    },
+    "autoload": {
+        "psr-4": {
+            "App\\": "app/"
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}
+EOL
+    
+    # Supprimer le fichier composer.lock s'il existe
+    rm -f composer.lock
+    
+    # Installer les dépendances
+    composer install --no-interaction --no-dev --optimize-autoloader
+    
     # Créer le fichier bootstrap/app.php
     cat > bootstrap/app.php << 'EOL'
 <?php
@@ -671,12 +712,6 @@ QUEUE_CONNECTION=sync
 SESSION_DRIVER=file
 SESSION_LIFETIME=120
 EOL
-    
-    # Supprimer le fichier composer.lock s'il existe
-    rm -f composer.lock
-    
-    # Installer les dépendances
-    composer install --no-interaction --no-dev --optimize-autoloader
     
     # S'assurer que nous sommes dans le bon répertoire
     cd /var/www/pixel-hub-web
