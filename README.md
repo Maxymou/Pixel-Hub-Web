@@ -270,4 +270,110 @@ Pour toute question ou problème :
 - Développé par [Votre Nom/Organisation]
 - Utilise Bootstrap 5 pour l'interface
 - Utilise Font Awesome pour les icônes
-- Inspiré par [Projets similaires] 
+- Inspiré par [Projets similaires]
+
+# Pixel Hub Web - Installation
+
+Ce guide vous permettra d'installer ou de désinstaller Pixel Hub Web sur votre Raspberry Pi.
+
+## Prérequis
+
+- Un Raspberry Pi avec Raspberry Pi OS (Debian)
+- Une connexion Internet
+- Les droits d'administration (sudo)
+
+## Installation
+
+1. Téléchargez le script d'installation :
+```bash
+wget https://raw.githubusercontent.com/Maxymou/pixel-hub-web/main/install-auto.sh
+```
+
+2. Rendez le script exécutable :
+```bash
+chmod +x install-auto.sh
+```
+
+3. Exécutez le script d'installation :
+```bash
+sudo ./install-auto.sh
+```
+
+Le script va :
+- Mettre à jour votre système
+- Installer Apache
+- Configurer les permissions Apache
+- Installer PHP
+- Installer MySQL
+- Installer PHPMyAdmin
+- Configurer tous les services
+
+Une fois l'installation terminée, vous pourrez accéder à :
+- Site web : http://127.0.0.1
+- PHPMyAdmin : http://127.0.0.1/phpmyadmin
+
+## Désinstallation
+
+Pour désinstaller complètement l'application, exécutez :
+```bash
+sudo ./install-auto.sh uninstall
+```
+
+Cette commande va :
+- Arrêter les services (Apache, MySQL)
+- Supprimer la base de données
+- Supprimer les fichiers de l'application
+- Supprimer les configurations Apache et PHP
+- Désinstaller les paquets
+- Nettoyer les logs et le cache
+
+## Vérification de l'installation
+
+Pour vérifier que tout fonctionne correctement :
+
+1. Vérifiez Apache :
+```bash
+wget -O check_apache.html http://127.0.0.1
+cat ./check_apache.html
+```
+
+2. Vérifiez PHP :
+```bash
+php -v
+```
+
+3. Vérifiez MySQL :
+```bash
+sudo mysql --user=root -p
+```
+
+4. Vérifiez PHPMyAdmin :
+- Ouvrez votre navigateur
+- Accédez à http://127.0.0.1/phpmyadmin
+- Connectez-vous avec :
+  - Utilisateur : root
+  - Mot de passe : password
+
+## En cas de problème
+
+Si vous rencontrez des problèmes :
+
+1. Vérifiez les logs Apache :
+```bash
+sudo tail -f /var/log/apache2/error.log
+```
+
+2. Vérifiez les logs MySQL :
+```bash
+sudo tail -f /var/log/mysql/error.log
+```
+
+3. Vérifiez l'état des services :
+```bash
+sudo systemctl status apache2
+sudo systemctl status mysql
+```
+
+## Support
+
+Pour toute question ou problème, n'hésitez pas à ouvrir une issue sur GitHub. 
