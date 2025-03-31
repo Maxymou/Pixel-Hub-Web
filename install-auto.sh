@@ -80,6 +80,7 @@ fix_application_permissions() {
         "$APP_DIR/public/uploads"
     )
     
+    # Créer les répertoires manquants
     for dir in "${DIRS[@]}"; do
         if [ ! -d "$dir" ]; then
             print_message "Création du répertoire : $dir"
@@ -90,28 +91,94 @@ fix_application_permissions() {
     # Définir les propriétaires et permissions
     print_message "Configuration des permissions..."
     
+    # Obtenir l'utilisateur actuel
+    CURRENT_USER=$(whoami)
+    
     # Propriétaire principal
-    sudo chown -R www-data:www-data "$APP_DIR"
+    print_message "Définition du propriétaire principal..."
+    sudo chown -R $CURRENT_USER:www-data "$APP_DIR"
     
     # Permissions pour les répertoires de stockage
     for dir in "${DIRS[@]}"; do
         print_message "Configuration des permissions pour : $dir"
         sudo chmod -R 775 "$dir"
-        sudo chown -R www-data:www-data "$dir"
+        sudo chown -R $CURRENT_USER:www-data "$dir"
     done
     
     # Permissions pour les fichiers de configuration
+    print_message "Configuration des permissions des fichiers..."
     sudo chmod 644 "$APP_DIR/.env"
     sudo chmod 644 "$APP_DIR/composer.json"
     sudo chmod 644 "$APP_DIR/composer.lock"
+    sudo chown $CURRENT_USER:www-data "$APP_DIR/.env"
+    sudo chown $CURRENT_USER:www-data "$APP_DIR/composer.json"
+    sudo chown $CURRENT_USER:www-data "$APP_DIR/composer.lock"
+    
+    # Permissions pour le répertoire public
+    print_message "Configuration des permissions du répertoire public..."
+    sudo chmod -R 755 "$APP_DIR/public"
+    sudo chown -R $CURRENT_USER:www-data "$APP_DIR/public"
+    
+    # Permissions pour le répertoire vendor
+    if [ -d "$APP_DIR/vendor" ]; then
+        print_message "Configuration des permissions du répertoire vendor..."
+        sudo chmod -R 755 "$APP_DIR/vendor"
+        sudo chown -R $CURRENT_USER:www-data "$APP_DIR/vendor"
+    fi
     
     # Vérifier les permissions après correction
     print_message "\nVérification des permissions après correction :"
     for dir in "${DIRS[@]}"; do
         if [ -w "$dir" ]; then
             print_message "✅ $dir : Permissions correctes"
+            print_message "  Propriétaire : $(stat -c '%U:%G' $dir)"
+            print_message "  Permissions : $(stat -c '%a' $dir)"
         else
             print_error "❌ $dir : Problème de permissions"
+            print_message "  Propriétaire actuel : $(stat -c '%U:%G' $dir)"
+            print_message "  Permissions actuelles : $(stat -c '%a' $dir)"
+        fi
+    done
+    
+    # Vérifier les permissions des fichiers de configuration
+    print_message "\nVérification des permissions des fichiers de configuration :"
+    CONFIG_FILES=(
+        "$APP_DIR/.env"
+        "$APP_DIR/composer.json"
+        "$APP_DIR/composer.lock"
+    )
+    
+    for file in "${CONFIG_FILES[@]}"; do
+        if [ -f "$file" ]; then
+            if [ -r "$file" ]; then
+                print_message "✅ $file : Permissions correctes"
+                print_message "  Propriétaire : $(stat -c '%U:%G' $file)"
+                print_message "  Permissions : $(stat -c '%a' $file)"
+            else
+                print_error "❌ $file : Problème de permissions"
+                print_message "  Propriétaire actuel : $(stat -c '%U:%G' $file)"
+                print_message "  Permissions actuelles : $(stat -c '%a' $file)"
+            fi
+        else
+            print_error "❌ $file : Fichier non trouvé"
+        fi
+    done
+    
+    # Vérifier que l'utilisateur www-data peut écrire dans les répertoires
+    print_message "\nVérification des droits d'écriture pour www-data :"
+    for dir in "${DIRS[@]}"; do
+        if sudo -u www-data test -w "$dir"; then
+            print_message "✅ $dir : www-data peut écrire"
+        else
+            print_error "❌ $dir : www-data ne peut pas écrire"
+            print_message "Tentative de correction..."
+            sudo chmod -R 775 "$dir"
+            sudo chown -R $CURRENT_USER:www-data "$dir"
+            if sudo -u www-data test -w "$dir"; then
+                print_message "✅ Correction réussie"
+            else
+                print_error "❌ Échec de la correction"
+            fi
         fi
     done
 }
