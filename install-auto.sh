@@ -408,8 +408,20 @@ install_system_prerequisites() {
 # Fonction pour installer Apache
 install_apache() {
     print_message "Installation d'Apache..."
-    sudo apt install -y apache2
-    check_command "Installation d'Apache réussie" "Échec de l'installation d'Apache"
+    
+    # Installation d'Apache
+    sudo apt-get update
+    sudo apt-get install -y apache2
+    
+    # Configuration d'Apache
+    sudo a2enmod rewrite
+    sudo a2enmod headers
+    sudo a2enmod ssl
+    
+    # Configuration du site
+    sudo cp pixel-hub.conf /etc/apache2/sites-available/
+    sudo a2ensite pixel-hub
+    sudo a2dissite 000-default
     
     # Configuration des permissions Apache
     print_message "Configuration des permissions Apache..."
@@ -420,12 +432,16 @@ install_apache() {
     sudo chown -R root:adm /var/log/apache2
     sudo chmod -R 755 /var/log/apache2
     
-    # Vérifier qu'Apache est en cours d'exécution
-    sudo systemctl is-active --quiet apache2
-    check_command "Apache est en cours d'exécution" "Apache n'est pas en cours d'exécution"
+    # Redémarrage d'Apache
+    sudo systemctl restart apache2
     
-    # Vérifier l'état après l'installation d'Apache
-    check_installation_status
+    # Vérification du statut
+    if systemctl is-active --quiet apache2; then
+        print_message "✅ Apache installé et démarré avec succès"
+    else
+        print_error "❌ Échec de l'installation d'Apache"
+        exit 1
+    fi
 }
 
 # Fonction pour installer PHP et ses extensions
