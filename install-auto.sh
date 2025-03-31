@@ -432,15 +432,27 @@ install_apache() {
     sudo chown -R root:adm /var/log/apache2
     sudo chmod -R 755 /var/log/apache2
     
-    # Redémarrage d'Apache
-    sudo systemctl restart apache2
+    # Démarrer Apache avec service au lieu de systemctl
+    print_message "Démarrage d'Apache..."
+    sudo service apache2 start
     
     # Vérification du statut
-    if systemctl is-active --quiet apache2; then
+    if pgrep -x "apache2" > /dev/null; then
         print_message "✅ Apache installé et démarré avec succès"
     else
-        print_error "❌ Échec de l'installation d'Apache"
-        exit 1
+        print_error "❌ Échec du démarrage d'Apache"
+        print_message "Tentative de démarrage alternative..."
+        sudo /etc/init.d/apache2 start
+        if pgrep -x "apache2" > /dev/null; then
+            print_message "✅ Apache démarré avec succès"
+        else
+            print_error "❌ Échec du démarrage d'Apache"
+            print_message "Vérification des logs Apache..."
+            if [ -f "/var/log/apache2/error.log" ]; then
+                tail -n 10 /var/log/apache2/error.log
+            fi
+            exit 1
+        fi
     fi
 }
 
