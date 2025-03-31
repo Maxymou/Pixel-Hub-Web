@@ -478,7 +478,20 @@ install_apache() {
                 ls -la /etc/apache2
                 ls -la /var/log/apache2
                 
-                exit 1
+                # Tentative de redémarrage complet
+                print_message "Tentative de redémarrage complet..."
+                sudo service apache2 stop
+                sudo rm -f /var/run/apache2/apache2.pid
+                sudo rm -f /var/run/apache2/apache2.sock
+                sudo service apache2 start
+                sleep 2
+                
+                if pgrep -x "apache2" > /dev/null; then
+                    print_message "✅ Apache démarré avec succès après redémarrage complet"
+                else
+                    print_error "❌ Échec du démarrage d'Apache après toutes les tentatives"
+                    exit 1
+                fi
             fi
         fi
     fi
@@ -490,6 +503,13 @@ install_apache() {
         print_message "Version : $(apache2 -v | head -n 1)"
         print_message "Modules activés :"
         apache2ctl -M | grep -i "rewrite\|ssl\|headers"
+        
+        # Vérifier que le serveur répond
+        if curl -s http://localhost > /dev/null; then
+            print_message "✅ Apache répond correctement"
+        else
+            print_warning "⚠️ Apache ne répond pas sur http://localhost"
+        fi
     else
         print_error "❌ Apache n'est pas en cours d'exécution après toutes les tentatives"
         exit 1
