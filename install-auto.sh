@@ -194,6 +194,7 @@ install_prerequisites() {
     
     # Configurer Composer pour permettre l'exécution en tant que root
     export COMPOSER_ALLOW_SUPERUSER=1
+    sudo mkdir -p /etc/environment.d
     sudo tee /etc/environment.d/composer.conf > /dev/null << EOL
 COMPOSER_ALLOW_SUPERUSER=1
 EOL
@@ -530,6 +531,15 @@ EOL
     # Installer les dépendances
     composer install --no-interaction --no-dev --optimize-autoloader
     
+    # S'assurer que nous sommes dans le bon répertoire
+    cd /var/www/pixel-hub-web
+    
+    # Vérifier que le fichier artisan existe
+    if [ ! -f "artisan" ]; then
+        echo -e "${RED}ERREUR: Le fichier artisan n'existe pas${NC}"
+        exit 1
+    fi
+    
     # Générer la clé d'application
     php artisan key:generate
     
@@ -561,6 +571,17 @@ EOL
             'password' => Hash::make('admin123')
         ]);
     "
+    
+    # Créer le fichier de configuration admin
+    mkdir -p config
+    cat > config/admin.php << EOL
+<?php
+return [
+    'username' => 'admin',
+    'password' => password_hash('admin123', PASSWORD_DEFAULT),
+    'is_admin' => true
+];
+EOL
     
     echo -e "${GREEN}Installation de l'application terminée${NC}"
 }
