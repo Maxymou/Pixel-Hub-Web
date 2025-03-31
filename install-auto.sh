@@ -477,6 +477,11 @@ MYSQL_SCRIPT
 install_application() {
     echo -e "${BLUE}Installation de l'application...${NC}"
     
+    # Supprimer le dossier existant s'il existe
+    if [ -d "/var/www/pixel-hub-web" ]; then
+        rm -rf /var/www/pixel-hub-web
+    fi
+    
     # Créer le dossier d'installation
     mkdir -p /var/www/pixel-hub-web
     cd /var/www/pixel-hub-web
@@ -670,9 +675,9 @@ configure_apache() {
 <VirtualHost *:80>
     ServerName localhost
     ServerAlias $IP_ADDRESS
-    DocumentRoot /var/www/pixel-hub/public
+    DocumentRoot /var/www/pixel-hub-web/public
     
-    <Directory /var/www/pixel-hub/public>
+    <Directory /var/www/pixel-hub-web/public>
         Options Indexes FollowSymLinks
         AllowOverride All
         Require all granted
@@ -734,14 +739,14 @@ generate_summary() {
     # Vérification des répertoires
     print_message "\nVérification des répertoires :" "$GREEN"
     DIRS=(
-        "/var/www/pixel-hub"
-        "/var/www/pixel-hub/storage"
-        "/var/www/pixel-hub/storage/logs"
-        "/var/www/pixel-hub/storage/framework/cache"
-        "/var/www/pixel-hub/storage/framework/sessions"
-        "/var/www/pixel-hub/storage/framework/views"
-        "/var/www/pixel-hub/bootstrap/cache"
-        "/var/www/pixel-hub/public/uploads"
+        "/var/www/pixel-hub-web"
+        "/var/www/pixel-hub-web/storage"
+        "/var/www/pixel-hub-web/storage/logs"
+        "/var/www/pixel-hub-web/storage/framework/cache"
+        "/var/www/pixel-hub-web/storage/framework/sessions"
+        "/var/www/pixel-hub-web/storage/framework/views"
+        "/var/www/pixel-hub-web/bootstrap/cache"
+        "/var/www/pixel-hub-web/public/uploads"
     )
     
     for dir in "${DIRS[@]}"; do
@@ -762,9 +767,9 @@ generate_summary() {
     FILES=(
         "/etc/apache2/sites-available/pixel-hub.conf"
         "/etc/php/conf.d/99-pixel-hub.ini"
-        "/var/www/pixel-hub/.env"
-        "/var/www/pixel-hub/composer.json"
-        "/var/www/pixel-hub/config/admin.php"
+        "/var/www/pixel-hub-web/.env"
+        "/var/www/pixel-hub-web/composer.json"
+        "/var/www/pixel-hub-web/config/admin.php"
     )
     
     for file in "${FILES[@]}"; do
@@ -787,9 +792,9 @@ generate_summary() {
     
     # Vérification des dépendances Composer
     print_message "\nVérification des dépendances Composer :" "$GREEN"
-    if [ -d "/var/www/pixel-hub/vendor" ]; then
+    if [ -d "/var/www/pixel-hub-web/vendor" ]; then
         echo "Dossier vendor : ✅ Existe"
-        if [ -f "/var/www/pixel-hub/composer.lock" ]; then
+        if [ -f "/var/www/pixel-hub-web/composer.lock" ]; then
             echo "Fichier composer.lock : ✅ Existe"
         else
             echo "Fichier composer.lock : ❌ Manquant"
