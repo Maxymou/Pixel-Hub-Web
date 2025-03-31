@@ -57,10 +57,14 @@ check_raspberry_pi() {
 optimize_raspberry_pi() {
     print_message "Optimisation du système pour le Raspberry Pi..."
     
-    # Désactiver les services non essentiels
-    sudo systemctl disable bluetooth
-    sudo systemctl disable cups
-    sudo systemctl disable triggerhappy
+    # Désactiver les services non essentiels (vérifier leur existence d'abord)
+    if systemctl list-unit-files | grep -q "bluetooth.service"; then
+        sudo systemctl disable bluetooth
+    fi
+    
+    if systemctl list-unit-files | grep -q "triggerhappy.service"; then
+        sudo systemctl disable triggerhappy
+    fi
     
     # Optimiser la mémoire swap
     if [ -f "/etc/dphys-swapfile" ]; then
@@ -398,17 +402,40 @@ check_installation_status() {
 # Fonction pour installer les prérequis système
 install_system_prerequisites() {
     print_message "Installation des prérequis système..."
+    
+    # Mise à jour du système
     sudo apt update
     check_command "Mise à jour des paquets réussie" "Échec de la mise à jour des paquets"
     
+    # Installation des outils de base
     sudo apt install -y curl git unzip
     check_command "Installation des outils de base réussie" "Échec de l'installation des outils de base"
+    
+    # Création des répertoires nécessaires
+    print_message "Création des répertoires nécessaires..."
+    sudo mkdir -p /var/www/pixel-hub-web/public
+    sudo mkdir -p /var/log/apache2
+    sudo mkdir -p /var/log/mysql
+    sudo mkdir -p /var/lib/php
+    sudo mkdir -p /var/run/php
     
     # Configuration des permissions pour les outils de base
     print_message "Configuration des permissions pour les outils de base..."
     sudo chmod 755 /usr/bin/curl
     sudo chmod 755 /usr/bin/git
     sudo chmod 755 /usr/bin/unzip
+    
+    # Configuration des permissions pour les répertoires
+    sudo chown -R www-data:www-data /var/www/pixel-hub-web
+    sudo chmod -R 755 /var/www/pixel-hub-web
+    sudo chown -R root:adm /var/log/apache2
+    sudo chmod -R 755 /var/log/apache2
+    sudo chown -R mysql:adm /var/log/mysql
+    sudo chmod -R 755 /var/log/mysql
+    sudo chown -R www-data:www-data /var/lib/php
+    sudo chmod -R 755 /var/lib/php
+    sudo chown -R www-data:www-data /var/run/php
+    sudo chmod -R 755 /var/run/php
     
     # Vérifier l'état après l'installation des prérequis
     check_installation_status
@@ -473,6 +500,7 @@ EOL
     sudo a2enmod rewrite
     sudo a2enmod headers
     sudo a2enmod ssl
+    sudo a2enmod proxy_fcgi
     
     # Configuration du site
     sudo tee /etc/apache2/sites-available/pixel-hub.conf > /dev/null << EOL
@@ -486,6 +514,10 @@ EOL
         AllowOverride All
         Require all granted
     </Directory>
+
+    <FilesMatch \.php$>
+        SetHandler "proxy:unix:/run/php/php8.2-fpm.sock|fcgi://localhost/"
+    </FilesMatch>
 
     ErrorLog ${APACHE_LOG_DIR}/pixel-hub-error.log
     CustomLog ${APACHE_LOG_DIR}/pixel-hub-access.log combined
@@ -555,6 +587,14 @@ EOL
 install_php() {
     print_message "Installation de PHP et ses extensions..."
     
+    # Ajouter le dépôt PHP si nécessaire
+    if ! grep -q "deb http://deb.debian.org/debian bookworm main" /etc/apt/sources.list; then
+        echo "deb http://deb.debian.org/debian bookworm main" | sudo tee -a /etc/apt/sources.list
+    fi
+    
+    # Mise à jour des paquets
+    sudo apt update
+    
     # Installation des extensions PHP essentielles
     sudo apt install -y \
         php8.2 \
@@ -577,6 +617,23 @@ install_php() {
     
     check_command "Installation de PHP et ses extensions réussie" "Échec de l'installation de PHP"
     
+    # Configuration de PHP-FPM
+    print_message "Configuration de PHP-FPM..."
+    sudo tee /etc/php/8.2/fpm/pool.d/www.conf > /dev/null << EOL
+[www]
+user = www-data
+group = www-data
+listen = /run/php/php8.2-fpm.sock
+listen.owner = www-data
+listen.group = www-data
+listen.mode = 0660
+pm = dynamic
+pm.max_children = 5
+pm.start_servers = 2
+pm.min_spare_servers = 1
+pm.max_spare_servers = 3
+EOL
+    
     # Configuration des permissions PHP
     print_message "Configuration des permissions PHP..."
     sudo chown -R root:root /etc/php
@@ -586,12 +643,30 @@ install_php() {
     sudo chown -R www-data:www-data /var/run/php
     sudo chmod -R 755 /var/run/php
     
+    # Démarrer PHP-FPM
+    sudo systemctl stop php8.2-fpm
+    sudo rm -f /var/run/php/php8.2-fpm.sock
+    sudo systemctl start php8.2-fpm
+    sudo systemctl enable php8.2-fpm
+    
     # Vérifier l'installation de PHP
     php -v
     check_command "PHP est correctement installé" "PHP n'est pas correctement installé"
     
-    # Vérifier l'état après l'installation de PHP
-    check_installation_status
+    # Vérifier que PHP-FPM est en cours d'exécution
+    if systemctl is-active --quiet php8.2-fpm; then
+        print_message "✅ PHP-FPM est en cours d'exécution"
+    else
+        print_error "❌ PHP-FPM n'est pas en cours d'exécution"
+        print_message "Tentative de redémarrage..."
+        sudo systemctl restart php8.2-fpm
+        if systemctl is-active --quiet php8.2-fpm; then
+            print_message "✅ PHP-FPM redémarré avec succès"
+        else
+            print_error "❌ Échec du redémarrage de PHP-FPM"
+            exit 1
+        fi
+    fi
 }
 
 # Fonction pour installer MySQL
