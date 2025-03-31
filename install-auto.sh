@@ -497,10 +497,132 @@ install_application() {
     mkdir -p storage/framework/views
     mkdir -p bootstrap/cache
     mkdir -p public/uploads
+    mkdir -p app/Http
+    mkdir -p app/Console
+    mkdir -p app/Exceptions
+    mkdir -p config
     
-    # Créer le fichier artisan s'il n'existe pas
-    if [ ! -f "artisan" ]; then
-        cat > artisan << 'EOL'
+    # Créer le fichier bootstrap/app.php
+    cat > bootstrap/app.php << 'EOL'
+<?php
+
+$app = new Illuminate\Foundation\Application(
+    $_ENV['APP_BASE_PATH'] ?? dirname(__DIR__)
+);
+
+$app->singleton(
+    Illuminate\Contracts\Http\Kernel::class,
+    App\Http\Kernel::class
+);
+
+$app->singleton(
+    Illuminate\Contracts\Console\Kernel::class,
+    App\Console\Kernel::class
+);
+
+$app->singleton(
+    Illuminate\Contracts\Debug\ExceptionHandler::class,
+    App\Exceptions\Handler::class
+);
+
+return $app;
+EOL
+    
+    # Créer le fichier app/Http/Kernel.php
+    cat > app/Http/Kernel.php << 'EOL'
+<?php
+
+namespace App\Http;
+
+use Illuminate\Foundation\Http\Kernel as HttpKernel;
+
+class Kernel extends HttpKernel
+{
+    protected $middleware = [
+        \Illuminate\Foundation\Http\Middleware\ValidatePostSize::class,
+        \Illuminate\Foundation\Http\Middleware\ConvertEmptyStringsToNull::class,
+    ];
+
+    protected $middlewareGroups = [
+        'web' => [
+            \Illuminate\Cookie\Middleware\EncryptCookies::class,
+            \Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse::class,
+            \Illuminate\Session\Middleware\StartSession::class,
+            \Illuminate\View\Middleware\ShareErrorsFromSession::class,
+            \Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class,
+            \Illuminate\Routing\Middleware\SubstituteBindings::class,
+        ],
+    ];
+
+    protected $routeMiddleware = [
+        'auth' => \Illuminate\Auth\Middleware\Authenticate::class,
+        'auth.basic' => \Illuminate\Auth\Middleware\AuthenticateWithBasicAuth::class,
+        'cache.headers' => \Illuminate\Http\Middleware\SetCacheHeaders::class,
+        'can' => \Illuminate\Auth\Middleware\Authorize::class,
+        'guest' => \App\Http\Middleware\RedirectIfAuthenticated::class,
+        'password.confirm' => \Illuminate\Auth\Middleware\RequirePassword::class,
+        'signed' => \Illuminate\Routing\Middleware\ValidateSignature::class,
+        'throttle' => \Illuminate\Routing\Middleware\ThrottleRequests::class,
+        'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
+    ];
+}
+EOL
+    
+    # Créer le fichier app/Console/Kernel.php
+    cat > app/Console/Kernel.php << 'EOL'
+<?php
+
+namespace App\Console;
+
+use Illuminate\Console\Scheduling\Schedule;
+use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
+
+class Kernel extends ConsoleKernel
+{
+    protected function schedule(Schedule $schedule)
+    {
+        // $schedule->command('inspire')->hourly();
+    }
+
+    protected function commands()
+    {
+        $this->load(__DIR__.'/Commands');
+        require base_path('routes/console.php');
+    }
+}
+EOL
+    
+    # Créer le fichier app/Exceptions/Handler.php
+    cat > app/Exceptions/Handler.php << 'EOL'
+<?php
+
+namespace App\Exceptions;
+
+use Illuminate\Foundation\Exceptions\Handler as ExceptionHandler;
+use Throwable;
+
+class Handler extends ExceptionHandler
+{
+    protected $dontReport = [
+        //
+    ];
+
+    protected $dontFlash = [
+        'password',
+        'password_confirmation',
+    ];
+
+    public function register()
+    {
+        $this->reportable(function (Throwable $e) {
+            //
+        });
+    }
+}
+EOL
+    
+    # Créer le fichier artisan
+    cat > artisan << 'EOL'
 #!/usr/bin/env php
 <?php
 
@@ -521,8 +643,7 @@ $kernel->terminate($input, $status);
 
 exit($status);
 EOL
-        chmod +x artisan
-    fi
+    chmod +x artisan
     
     # Créer le fichier .env
     cat > .env << EOL
@@ -550,35 +671,6 @@ QUEUE_CONNECTION=sync
 SESSION_DRIVER=file
 SESSION_LIFETIME=120
 EOL
-    
-    # Créer le fichier bootstrap/app.php s'il n'existe pas
-    mkdir -p bootstrap
-    if [ ! -f "bootstrap/app.php" ]; then
-        cat > bootstrap/app.php << 'EOL'
-<?php
-
-$app = new Illuminate\Foundation\Application(
-    $_ENV['APP_BASE_PATH'] ?? dirname(__DIR__)
-);
-
-$app->singleton(
-    Illuminate\Contracts\Http\Kernel::class,
-    App\Http\Kernel::class
-);
-
-$app->singleton(
-    Illuminate\Contracts\Console\Kernel::class,
-    App\Console\Kernel::class
-);
-
-$app->singleton(
-    Illuminate\Contracts\Debug\ExceptionHandler::class,
-    App\Exceptions\Handler::class
-);
-
-return $app;
-EOL
-    fi
     
     # Supprimer le fichier composer.lock s'il existe
     rm -f composer.lock
@@ -628,7 +720,6 @@ EOL
     "
     
     # Créer le fichier de configuration admin
-    mkdir -p config
     cat > config/admin.php << EOL
 <?php
 return [
