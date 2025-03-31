@@ -9,7 +9,25 @@ Pixel Hub Web est une application web pour gérer vos pixels et vos projets.
 - MySQL 5.7 ou supérieur
 - Apache 2.4 ou supérieur
 
-## Installation
+## Installation Automatique
+
+Pour une installation rapide et automatique, utilisez le script d'installation :
+
+```bash
+wget https://raw.githubusercontent.com/Maxymou/pixel-hub-web/main/install-auto.sh
+chmod +x install-auto.sh
+./install-auto.sh
+```
+
+Ce script va :
+- Installer tous les prérequis nécessaires
+- Configurer Apache et PHP
+- Créer la base de données
+- Configurer les permissions
+- Installer les dépendances
+- Lancer l'application
+
+## Installation Manuelle
 
 1. Clonez le dépôt :
 ```bash
