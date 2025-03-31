@@ -716,14 +716,19 @@ uninstall_application() {
     
     # Arrêter les services
     print_message "Arrêt des services..."
-    sudo systemctl stop apache2
-    sudo systemctl stop mysql
+    sudo service apache2 stop
+    sudo service mysql stop
     
     # Supprimer la base de données
     print_message "Suppression de la base de données..."
-    sudo mysql -e "DROP DATABASE IF EXISTS pixel_hub;"
-    sudo mysql -e "DROP USER IF EXISTS 'pixel_hub'@'localhost';"
-    sudo mysql -e "FLUSH PRIVILEGES;"
+    if command -v mysql &> /dev/null; then
+        sudo mysql -e "DROP DATABASE IF EXISTS pixel_hub;"
+        sudo mysql -e "DROP USER IF EXISTS 'pixel_hub'@'localhost';"
+        sudo mysql -e "FLUSH PRIVILEGES;"
+        print_message "✅ Base de données supprimée"
+    else
+        print_warning "MySQL n'est pas installé, pas de base de données à supprimer"
+    fi
     
     # Corriger les permissions avant la suppression
     print_message "Correction des permissions avant la suppression..."
@@ -736,6 +741,8 @@ uninstall_application() {
         print_message "Suppression des fichiers de l'application..."
         rm -rf "$APP_DIR"
         print_message "✅ Répertoire de l'application supprimé"
+    else
+        print_warning "Le répertoire $APP_DIR n'existe pas"
     fi
     
     # Supprimer les configurations Apache
@@ -744,6 +751,8 @@ uninstall_application() {
         sudo a2dissite pixel-hub.conf
         sudo rm /etc/apache2/sites-available/pixel-hub.conf
         print_message "✅ Configuration Apache supprimée"
+    else
+        print_warning "Configuration Apache non trouvée"
     fi
     
     # Supprimer les configurations PHP
@@ -751,26 +760,44 @@ uninstall_application() {
     if [ -f "/etc/php/conf.d/99-pixel-hub.ini" ]; then
         sudo rm /etc/php/conf.d/99-pixel-hub.ini
         print_message "✅ Configuration PHP supprimée"
+    else
+        print_warning "Configuration PHP non trouvée"
     fi
     
     # Désinstaller les paquets
     print_message "Désinstallation des paquets..."
     sudo apt remove -y apache2 php8.2* mysql-server
     sudo apt autoremove -y
+    sudo apt clean
     print_message "✅ Paquets désinstallés"
     
     # Nettoyer les répertoires de logs
     print_message "Nettoyage des logs..."
-    sudo rm -rf /var/log/apache2/*
-    sudo rm -rf /var/log/mysql/*
-    print_message "✅ Logs nettoyés"
+    if [ -d "/var/log/apache2" ]; then
+        sudo rm -rf /var/log/apache2/*
+        print_message "✅ Logs Apache nettoyés"
+    fi
+    if [ -d "/var/log/mysql" ]; then
+        sudo rm -rf /var/log/mysql/*
+        print_message "✅ Logs MySQL nettoyés"
+    fi
     
     # Nettoyer le cache de Composer
     print_message "Nettoyage du cache de Composer..."
-    rm -rf ~/.composer/cache/*
-    print_message "✅ Cache de Composer nettoyé"
+    if [ -d "$HOME/.composer/cache" ]; then
+        rm -rf "$HOME/.composer/cache/*"
+        print_message "✅ Cache de Composer nettoyé"
+    fi
     
-    print_message "Désinstallation terminée avec succès !"
+    # Vérification finale
+    print_message "\nVérification de la désinstallation..."
+    if [ ! -d "$APP_DIR" ] && [ ! -f "/etc/apache2/sites-available/pixel-hub.conf" ] && [ ! -f "/etc/php/conf.d/99-pixel-hub.ini" ]; then
+        print_message "✅ Désinstallation réussie"
+    else
+        print_warning "Certains éléments n'ont pas été complètement supprimés"
+    fi
+    
+    print_message "Désinstallation terminée !"
 }
 
 # Fonction principale
