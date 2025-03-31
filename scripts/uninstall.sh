@@ -8,7 +8,24 @@ NC='\033[0m' # No Color
 
 # Fonction pour afficher les messages
 print_message() {
-    echo -e "${2}${1}${NC}"
+    echo -e "${GREEN}[INFO] $1${NC}"
+}
+
+print_error() {
+    echo -e "${RED}[ERREUR] $1${NC}"
+}
+
+print_warning() {
+    echo -e "${YELLOW}[ATTENTION] $1${NC}"
+}
+
+# Fonction pour vérifier si une commande a réussi
+check_command() {
+    if [ $? -eq 0 ]; then
+        print_message "$1"
+    else
+        print_error "$2"
+    fi
 }
 
 # Fonction pour vérifier si une commande existe
@@ -18,7 +35,7 @@ command_exists() {
 
 # Fonction pour arrêter les services
 stop_services() {
-    print_message "Arrêt des services..." "$YELLOW"
+    print_message "Arrêt des services..."
     
     if command_exists systemctl; then
         sudo systemctl stop apache2
@@ -28,145 +45,108 @@ stop_services() {
         sudo service mysql stop
     fi
     
-    print_message "Services arrêtés avec succès." "$GREEN"
+    check_command "Services arrêtés avec succès." "Erreur lors de l'arrêt des services."
 }
 
 # Fonction pour supprimer l'application
 remove_application() {
-    print_message "Suppression de l'application..." "$YELLOW"
+    print_message "Suppression de l'application..."
     
     # Supprimer le dossier de l'application
-    sudo rm -rf /var/www/pixel-hub
+    sudo rm -rf /var/www/pixel-hub-web
     
-    print_message "Application supprimée avec succès." "$GREEN"
+    check_command "Application supprimée avec succès." "Erreur lors de la suppression de l'application."
 }
 
 # Fonction pour supprimer la base de données
 remove_database() {
-    print_message "Suppression de la base de données..." "$YELLOW"
+    print_message "Suppression de la base de données..."
     
     if command_exists mysql; then
-        sudo mysql -e "DROP DATABASE IF EXISTS pixel_hub; DROP USER IF EXISTS 'pixel_hub'@'localhost';"
+        sudo mysql -e "DROP DATABASE IF EXISTS pixel_hub;"
+        sudo mysql -e "DROP USER IF EXISTS 'pixel_hub'@'localhost';"
+        sudo mysql -e "FLUSH PRIVILEGES;"
     fi
     
-    print_message "Base de données supprimée avec succès." "$GREEN"
+    check_command "Base de données supprimée avec succès." "Erreur lors de la suppression de la base de données."
 }
 
 # Fonction pour supprimer les configurations
 remove_configurations() {
-    print_message "Suppression des configurations..." "$YELLOW"
+    print_message "Suppression des configurations..."
     
     # Supprimer les configurations Apache
     sudo rm -f /etc/apache2/sites-available/pixel-hub.conf
     
     # Supprimer les configurations PHP
-    sudo rm -f /etc/php/8.1/apache2/conf.d/99-pixel-hub.ini
+    sudo rm -f /etc/php/conf.d/99-pixel-hub.ini
     
     # Supprimer les limites système
     sudo rm -f /etc/security/limits.d/pixel-hub.conf
     
-    print_message "Configurations supprimées avec succès." "$GREEN"
+    check_command "Configurations supprimées avec succès." "Erreur lors de la suppression des configurations."
 }
 
 # Fonction pour désinstaller les paquets
 remove_packages() {
-    print_message "Désinstallation des paquets..." "$YELLOW"
+    print_message "Désinstallation des paquets..."
     
     # Désinstaller les paquets PHP
-    sudo apt-get remove -y \
-        php8.1 \
-        php8.1-cli \
-        php8.1-common \
-        php8.1-mysql \
-        php8.1-zip \
-        php8.1-gd \
-        php8.1-mbstring \
-        php8.1-curl \
-        php8.1-xml \
-        php8.1-bcmath \
-        php8.1-json \
-        php8.1-opcache \
-        php8.1-intl \
-        php8.1-ldap \
-        php8.1-redis \
-        php8.1-imagick \
-        mysql-server \
-        apache2
-    
-    # Supprimer les fichiers de configuration restants
-    sudo apt-get purge -y \
-        php8.1 \
-        php8.1-cli \
-        php8.1-common \
-        php8.1-mysql \
-        php8.1-zip \
-        php8.1-gd \
-        php8.1-mbstring \
-        php8.1-curl \
-        php8.1-xml \
-        php8.1-bcmath \
-        php8.1-json \
-        php8.1-opcache \
-        php8.1-intl \
-        php8.1-ldap \
-        php8.1-redis \
-        php8.1-imagick \
-        mysql-server \
-        apache2
+    sudo apt remove -y apache2 php8.2* mysql-server
     
     # Nettoyer les paquets non utilisés
-    sudo apt-get autoremove -y
-    sudo apt-get clean
+    sudo apt autoremove -y
+    sudo apt clean
     
     # Supprimer le dépôt PHP
     sudo rm -f /etc/apt/sources.list.d/php.list
     sudo rm -f /etc/apt/trusted.gpg.d/php.gpg
     
-    print_message "Paquets désinstallés avec succès." "$GREEN"
+    check_command "Paquets désinstallés avec succès." "Erreur lors de la désinstallation des paquets."
 }
 
 # Fonction pour vérifier la désinstallation
 verify_uninstallation() {
-    print_message "Vérification de la désinstallation..." "$YELLOW"
+    print_message "Vérification de la désinstallation..."
     
     # Vérifier les services
     if command_exists systemctl; then
-        if systemctl is-active --quiet apache2; then
-            print_message "ATTENTION: Apache est toujours actif" "$RED"
+        if ! systemctl is-active --quiet apache2; then
+            print_message "Apache est bien arrêté"
         else
-            print_message "Apache est bien arrêté" "$GREEN"
+            print_warning "Apache n'est pas arrêté"
         fi
         
-        if systemctl is-active --quiet mysql; then
-            print_message "ATTENTION: MySQL est toujours actif" "$RED"
+        if ! systemctl is-active --quiet mysql; then
+            print_message "MySQL est bien arrêté"
         else
-            print_message "MySQL est bien arrêté" "$GREEN"
+            print_warning "MySQL n'est pas arrêté"
         fi
     fi
     
     # Vérifier les fichiers
-    if [ -d "/var/www/pixel-hub" ]; then
-        print_message "ATTENTION: Le dossier de l'application existe toujours" "$RED"
+    if [ ! -d "/var/www/pixel-hub-web" ]; then
+        print_message "Le dossier de l'application a été supprimé"
     else
-        print_message "Le dossier de l'application a été supprimé" "$GREEN"
+        print_warning "Le dossier de l'application n'a pas été supprimé"
     fi
     
-    if [ -f "/etc/apache2/sites-available/pixel-hub.conf" ]; then
-        print_message "ATTENTION: La configuration Apache existe toujours" "$RED"
+    if [ ! -f "/etc/apache2/sites-available/pixel-hub.conf" ]; then
+        print_message "La configuration Apache a été supprimée"
     else
-        print_message "La configuration Apache a été supprimée" "$GREEN"
+        print_warning "La configuration Apache n'a pas été supprimée"
     fi
     
-    if [ -f "/etc/php/8.1/apache2/conf.d/99-pixel-hub.ini" ]; then
-        print_message "ATTENTION: La configuration PHP existe toujours" "$RED"
+    if [ ! -f "/etc/php/conf.d/99-pixel-hub.ini" ]; then
+        print_message "La configuration PHP a été supprimée"
     else
-        print_message "La configuration PHP a été supprimée" "$GREEN"
+        print_warning "La configuration PHP n'a pas été supprimée"
     fi
 }
 
 # Fonction principale
 main() {
-    print_message "Démarrage de la désinstallation de Pixel Hub Web..." "$YELLOW"
+    print_message "Démarrage de la désinstallation de Pixel Hub Web..."
     
     stop_services
     remove_application
@@ -175,8 +155,8 @@ main() {
     remove_packages
     verify_uninstallation
     
-    print_message "Désinstallation terminée !" "$GREEN"
-    print_message "Si vous voyez des messages d'ATTENTION en rouge, veuillez vérifier manuellement ces éléments." "$YELLOW"
+    print_message "Désinstallation terminée !"
+    print_warning "Si vous voyez des messages d'ATTENTION en rouge, veuillez vérifier manuellement ces éléments."
 }
 
 # Exécuter la fonction principale
