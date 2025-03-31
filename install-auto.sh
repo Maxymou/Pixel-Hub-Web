@@ -449,7 +449,8 @@ install_php() {
         php8.1-intl \
         php8.1-ldap \
         php8.1-redis \
-        php8.1-imagick
+        php8.1-imagick \
+        php8.1-fpm
     
     check_command "Installation de PHP et ses extensions réussie" "Échec de l'installation de PHP"
     
