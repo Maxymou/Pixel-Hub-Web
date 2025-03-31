@@ -477,26 +477,47 @@ MYSQL_SCRIPT
 install_application() {
     echo -e "${BLUE}Installation de l'application...${NC}"
     
-    # Créer le dossier temporaire
-    mkdir -p /tmp/pixel-hub-web
-    cd /tmp/pixel-hub-web
+    # Créer le dossier d'installation
+    mkdir -p /var/www/pixel-hub-web
+    cd /var/www/pixel-hub-web
     
     # Cloner le repository
     git clone https://github.com/Maxymou/pixel-hub-web.git .
     
     # Créer les dossiers nécessaires
-    mkdir -p storage/logs storage/framework/cache storage/framework/sessions storage/framework/views bootstrap/cache public/uploads
+    mkdir -p storage/logs
+    mkdir -p storage/framework/cache
+    mkdir -p storage/framework/sessions
+    mkdir -p storage/framework/views
+    mkdir -p bootstrap/cache
+    mkdir -p public/uploads
     
-    # Copier les fichiers de configuration
-    cp .env.example .env
-    
-    # Configurer le fichier .env
-    sed -i "s/DB_DATABASE=laravel/DB_DATABASE=pixel_hub/" .env
-    sed -i "s/DB_USERNAME=root/DB_USERNAME=pixel_hub/" .env
-    sed -i "s/DB_PASSWORD=/DB_PASSWORD=1234/" .env
-    sed -i "s/APP_URL=http:\/\/localhost/APP_URL=http:\/\/$(get_ip_address)/" .env
-    sed -i "s/APP_ENV=local/APP_ENV=production/" .env
-    sed -i "s/APP_DEBUG=true/APP_DEBUG=false/" .env
+    # Créer le fichier .env
+    cat > .env << EOL
+APP_NAME=PixelHub
+APP_ENV=production
+APP_KEY=
+APP_DEBUG=false
+APP_URL=http://$(get_ip_address)
+
+LOG_CHANNEL=stack
+LOG_DEPRECATIONS_CHANNEL=null
+LOG_LEVEL=error
+
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=pixel_hub
+DB_USERNAME=pixel_hub
+DB_PASSWORD=1234
+
+BROADCAST_DRIVER=log
+CACHE_DRIVER=file
+FILESYSTEM_DISK=local
+QUEUE_CONNECTION=sync
+SESSION_DRIVER=file
+SESSION_LIFETIME=120
+EOL
     
     # Supprimer le fichier composer.lock s'il existe
     rm -f composer.lock
@@ -518,11 +539,6 @@ install_application() {
     php artisan route:cache
     php artisan view:cache
     
-    # Copier les fichiers vers le dossier d'installation
-    cp -r * /var/www/pixel-hub-web/
-    cp -r .env /var/www/pixel-hub-web/
-    cp -r .git /var/www/pixel-hub-web/
-    
     # Définir les permissions
     chown -R www-data:www-data /var/www/pixel-hub-web
     chmod -R 755 /var/www/pixel-hub-web
@@ -530,7 +546,6 @@ install_application() {
     chmod -R 775 /var/www/pixel-hub-web/bootstrap/cache
     
     # Configurer la base de données
-    cd /var/www/pixel-hub-web
     php artisan migrate --force
     
     # Créer l'utilisateur admin
@@ -541,9 +556,6 @@ install_application() {
             'password' => Hash::make('admin123')
         ]);
     "
-    
-    # Nettoyer le dossier temporaire
-    rm -rf /tmp/pixel-hub-web
     
     echo -e "${GREEN}Installation de l'application terminée${NC}"
 }
