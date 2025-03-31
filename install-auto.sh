@@ -445,9 +445,9 @@ install_system_prerequisites() {
 install_apache() {
     print_message "Installation d'Apache..."
     
-    # Installation d'Apache
+    # Installation d'Apache avec les modules nécessaires
     sudo apt-get update
-    sudo apt-get install -y apache2
+    sudo apt-get install -y apache2 apache2-utils libapache2-mod-proxy-fcgi
     
     # Créer le répertoire de l'application
     print_message "Création du répertoire de l'application..."
@@ -607,7 +607,6 @@ install_php() {
         php8.2-curl \
         php8.2-xml \
         php8.2-bcmath \
-        php8.2-json \
         php8.2-opcache \
         php8.2-intl \
         php8.2-ldap \
