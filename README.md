@@ -1,99 +1,83 @@
-# Pixel Hub Web
+# PixelHub
 
-Pixel Hub Web est une application web pour gérer vos pixels et vos projets.
+Application web basée sur la stack LEMP (Nginx, MariaDB, PHP).
 
 ## Prérequis
 
-- PHP 8.2 ou supérieur
+- Une installation fonctionnelle de la stack LEMP (Nginx, MariaDB, PHP)
+- Git
 - Composer
-- MySQL 5.7 ou supérieur
-- Apache 2.4 ou supérieur
 
-## Installation Automatique
+## Installation
 
-Pour une installation rapide et automatique, utilisez le script d'installation :
+Pour installer PixelHub sur une stack LEMP existante, exécutez la commande suivante :
 
 ```bash
-wget https://raw.githubusercontent.com/Maxymou/pixel-hub-web/main/install-auto.sh
-chmod +x install-auto.sh
-./install-auto.sh
+curl -s https://raw.githubusercontent.com/Maxymou/pixel-hub-web/main/install-pixelhub.sh | sudo bash
 ```
 
 Ce script va :
-- Installer tous les prérequis nécessaires
-- Configurer Apache et PHP
-- Créer la base de données
-- Configurer les permissions
-- Installer les dépendances
-- Lancer l'application
+1. Vérifier que la stack LEMP est installée et fonctionnelle
+2. Vérifier les versions de Nginx, MariaDB et PHP
+3. Vérifier que les services sont en cours d'exécution
+4. Installer PixelHub et toutes ses dépendances
+5. Configurer Nginx pour PixelHub
+6. Créer la base de données
+7. Configurer l'environnement
+8. Optimiser l'application
 
-## Installation Manuelle
+## Installation manuelle
 
-1. Clonez le dépôt :
-```bash
-git clone https://github.com/Maxymou/pixel-hub-web.git
-cd pixel-hub-web
-```
+Si vous préférez installer manuellement :
 
-2. Installez les dépendances :
-```bash
-composer install
-```
+1. Clonez le repository
+2. Copiez le fichier `pixelhub.conf` dans le dossier `/etc/nginx/sites-available/`
+3. Créez un lien symbolique dans `/etc/nginx/sites-enabled/`
+4. Créez la base de données :
+   ```sql
+   CREATE DATABASE pixelhub;
+   ```
+5. Configurez les variables d'environnement dans le fichier `.env`
+6. Exécutez les migrations :
+   ```bash
+   php artisan migrate
+   ```
+7. Générez la clé d'application :
+   ```bash
+   php artisan key:generate
+   ```
 
-3. Copiez le fichier .env.example en .env :
-```bash
-cp .env.example .env
-```
+## Configuration
 
-4. Générez la clé d'application :
-```bash
-php artisan key:generate
-```
+### Nginx
+Le fichier de configuration Nginx est fourni dans `pixelhub.conf`. Il doit être placé dans :
+- `/etc/nginx/sites-available/pixelhub.conf`
+- `/etc/nginx/sites-enabled/pixelhub.conf` (lien symbolique)
 
-5. Configurez votre base de données dans le fichier .env :
-```env
-DB_CONNECTION=mysql
-DB_HOST=127.0.0.1
-DB_PORT=3306
-DB_DATABASE=pixel_hub
-DB_USERNAME=pixel_hub
-DB_PASSWORD=1234
-```
+### MariaDB
+La base de données est configurée avec les paramètres suivants :
+- Host: 127.0.0.1
+- Port: 3306
+- Database: pixelhub
+- Username: root
+- Password: (vide par défaut)
 
-6. Créez la base de données et l'utilisateur :
-```bash
-mysql -u root -p
-```
+### PHP
+Les extensions PHP suivantes sont requises :
+- php8.2-mysql
+- php8.2-xml
+- php8.2-curl
+- php8.2-mbstring
+- php8.2-zip
+- php8.2-bcmath
 
-```sql
-CREATE DATABASE pixel_hub;
-CREATE USER 'pixel_hub'@'localhost' IDENTIFIED BY '1234';
-GRANT ALL PRIVILEGES ON pixel_hub.* TO 'pixel_hub'@'localhost';
-FLUSH PRIVILEGES;
-```
+## Désinstallation
 
-7. Exécutez les migrations :
-```bash
-php artisan migrate
-```
+Pour désinstaller l'application, exécutez le fichier `uninstall.sh`.
 
-8. Configurez Apache :
-```bash
-sudo cp pixel-hub.conf /etc/apache2/sites-available/
-sudo a2ensite pixel-hub
-sudo systemctl restart apache2
-```
+## Support
 
-## Utilisation
-
-1. Accédez à l'application via votre navigateur :
-```
-http://localhost
-```
-
-2. Connectez-vous avec les identifiants par défaut :
-- Email : admin@example.com
-- Mot de passe : password
+Pour toute question ou problème, veuillez créer une issue dans le repository.
 
 ## Contribution
 
@@ -209,22 +193,61 @@ sudo systemctl stop apache2
 sudo systemctl stop mysql
 
 # Supprimer l'application
-sudo rm -rf /var/www/pixel-hub-web
+sudo rm -rf /var/www/pixel-hub
 
 # Supprimer la base de données
-sudo mysql -e "DROP DATABASE IF EXISTS pixel_hub;"
-sudo mysql -e "DROP USER IF EXISTS 'pixel_hub'@'localhost';"
-sudo mysql -e "FLUSH PRIVILEGES;"
+sudo mysql -e "DROP DATABASE IF EXISTS pixel_hub; DROP USER IF EXISTS 'pixel_hub'@'localhost';"
 
 # Supprimer les configurations
 sudo rm -f /etc/apache2/sites-available/pixel-hub.conf
-sudo rm -f /etc/php/conf.d/99-pixel-hub.ini
+sudo rm -f /etc/php/8.1/apache2/conf.d/99-pixel-hub.ini
 sudo rm -f /etc/security/limits.d/pixel-hub.conf
 
 # Désinstaller les paquets
-sudo apt remove -y apache2 php8.2* mysql-server
-sudo apt autoremove -y
-sudo apt clean
+sudo apt-get remove -y \
+    php8.1 \
+    php8.1-cli \
+    php8.1-common \
+    php8.1-mysql \
+    php8.1-zip \
+    php8.1-gd \
+    php8.1-mbstring \
+    php8.1-curl \
+    php8.1-xml \
+    php8.1-bcmath \
+    php8.1-json \
+    php8.1-opcache \
+    php8.1-intl \
+    php8.1-ldap \
+    php8.1-redis \
+    php8.1-imagick \
+    mysql-server \
+    apache2
+
+# Supprimer les fichiers de configuration restants
+sudo apt-get purge -y \
+    php8.1 \
+    php8.1-cli \
+    php8.1-common \
+    php8.1-mysql \
+    php8.1-zip \
+    php8.1-gd \
+    php8.1-mbstring \
+    php8.1-curl \
+    php8.1-xml \
+    php8.1-bcmath \
+    php8.1-json \
+    php8.1-opcache \
+    php8.1-intl \
+    php8.1-ldap \
+    php8.1-redis \
+    php8.1-imagick \
+    mysql-server \
+    apache2
+
+# Nettoyer les paquets non utilisés
+sudo apt-get autoremove -y
+sudo apt-get clean
 
 # Supprimer le dépôt PHP
 sudo rm -f /etc/apt/sources.list.d/php.list
@@ -270,110 +293,4 @@ Pour toute question ou problème :
 - Développé par [Votre Nom/Organisation]
 - Utilise Bootstrap 5 pour l'interface
 - Utilise Font Awesome pour les icônes
-- Inspiré par [Projets similaires]
-
-# Pixel Hub Web - Installation
-
-Ce guide vous permettra d'installer ou de désinstaller Pixel Hub Web sur votre Raspberry Pi.
-
-## Prérequis
-
-- Un Raspberry Pi avec Raspberry Pi OS (Debian)
-- Une connexion Internet
-- Les droits d'administration (sudo)
-
-## Installation
-
-1. Téléchargez le script d'installation :
-```bash
-wget https://raw.githubusercontent.com/Maxymou/pixel-hub-web/main/install-auto.sh
-```
-
-2. Rendez le script exécutable :
-```bash
-chmod +x install-auto.sh
-```
-
-3. Exécutez le script d'installation :
-```bash
-sudo ./install-auto.sh
-```
-
-Le script va :
-- Mettre à jour votre système
-- Installer Apache
-- Configurer les permissions Apache
-- Installer PHP
-- Installer MySQL
-- Installer PHPMyAdmin
-- Configurer tous les services
-
-Une fois l'installation terminée, vous pourrez accéder à :
-- Site web : http://127.0.0.1
-- PHPMyAdmin : http://127.0.0.1/phpmyadmin
-
-## Désinstallation
-
-Pour désinstaller complètement l'application, exécutez :
-```bash
-sudo ./install-auto.sh uninstall
-```
-
-Cette commande va :
-- Arrêter les services (Apache, MySQL)
-- Supprimer la base de données
-- Supprimer les fichiers de l'application
-- Supprimer les configurations Apache et PHP
-- Désinstaller les paquets
-- Nettoyer les logs et le cache
-
-## Vérification de l'installation
-
-Pour vérifier que tout fonctionne correctement :
-
-1. Vérifiez Apache :
-```bash
-wget -O check_apache.html http://127.0.0.1
-cat ./check_apache.html
-```
-
-2. Vérifiez PHP :
-```bash
-php -v
-```
-
-3. Vérifiez MySQL :
-```bash
-sudo mysql --user=root -p
-```
-
-4. Vérifiez PHPMyAdmin :
-- Ouvrez votre navigateur
-- Accédez à http://127.0.0.1/phpmyadmin
-- Connectez-vous avec :
-  - Utilisateur : root
-  - Mot de passe : password
-
-## En cas de problème
-
-Si vous rencontrez des problèmes :
-
-1. Vérifiez les logs Apache :
-```bash
-sudo tail -f /var/log/apache2/error.log
-```
-
-2. Vérifiez les logs MySQL :
-```bash
-sudo tail -f /var/log/mysql/error.log
-```
-
-3. Vérifiez l'état des services :
-```bash
-sudo systemctl status apache2
-sudo systemctl status mysql
-```
-
-## Support
-
-Pour toute question ou problème, n'hésitez pas à ouvrir une issue sur GitHub. 
+- Inspiré par [Projets similaires] 
