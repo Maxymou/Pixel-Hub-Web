@@ -313,6 +313,14 @@ print_message "Configuration des permissions pour le fichier Handler.php..."
 chown www-data:www-data /var/www/pixelhub/app/Exceptions/Handler.php
 chmod 644 /var/www/pixelhub/app/Exceptions/Handler.php
 
+# Vérification du contenu du fichier Handler.php
+print_message "Vérification du contenu du fichier Handler.php..."
+if ! grep -q "public function register()" /var/www/pixelhub/app/Exceptions/Handler.php; then
+    print_error "La méthode register() n'est pas publique dans le fichier Handler.php"
+    print_error "Vérifiez le contenu du fichier : cat /var/www/pixelhub/app/Exceptions/Handler.php"
+    exit 1
+fi
+
 # Installation des dépendances
 print_message "Installation des dépendances..."
 cd /var/www/pixelhub
