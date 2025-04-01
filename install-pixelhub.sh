@@ -74,22 +74,26 @@ print_message "PHP : $PHP_VERSION"
 print_message "Vérification des services..."
 
 # Nginx
-if ! systemctl is-active --quiet nginx; then
+if ! service nginx status | grep -q "active (running)"; then
     print_message "Démarrage du service Nginx..."
-    systemctl start nginx
-    if ! systemctl is-active --quiet nginx; then
+    service nginx start
+    sleep 2
+    if ! service nginx status | grep -q "active (running)"; then
         print_error "Impossible de démarrer le service Nginx"
+        print_error "Vérifiez les logs avec : tail -f /var/log/nginx/error.log"
         exit 1
     fi
     print_message "Service Nginx démarré avec succès"
 fi
 
 # MariaDB
-if ! systemctl is-active --quiet mysql; then
+if ! service mysql status | grep -q "active (running)"; then
     print_message "Démarrage du service MariaDB..."
-    systemctl start mysql
-    if ! systemctl is-active --quiet mysql; then
+    service mysql start
+    sleep 2
+    if ! service mysql status | grep -q "active (running)"; then
         print_error "Impossible de démarrer le service MariaDB"
+        print_error "Vérifiez les logs avec : tail -f /var/log/mysql/error.log"
         exit 1
     fi
     print_message "Service MariaDB démarré avec succès"
@@ -98,11 +102,13 @@ fi
 # Vérification des ports
 if ! netstat -tuln | grep -q ":80 "; then
     print_error "Le port 80 n'est pas ouvert (Nginx)"
+    print_error "Vérifiez les logs avec : tail -f /var/log/nginx/error.log"
     exit 1
 fi
 
 if ! netstat -tuln | grep -q ":3306 "; then
     print_error "Le port 3306 n'est pas ouvert (MariaDB)"
+    print_error "Vérifiez les logs avec : tail -f /var/log/mysql/error.log"
     exit 1
 fi
 
@@ -236,7 +242,7 @@ php artisan view:cache
 
 # Redémarrage de Nginx
 print_message "Redémarrage de Nginx..."
-systemctl restart nginx
+service nginx restart
 
 # Vérification finale
 if [ $ERRORS -eq 0 ]; then
