@@ -70,15 +70,29 @@ print_message "Nginx : $NGINX_VERSION"
 print_message "MariaDB : $MARIADB_VERSION"
 print_message "PHP : $PHP_VERSION"
 
-# Vérification des services
+# Vérification et démarrage des services
+print_message "Vérification des services..."
+
+# Nginx
 if ! systemctl is-active --quiet nginx; then
-    print_error "Le service Nginx n'est pas en cours d'exécution"
-    exit 1
+    print_message "Démarrage du service Nginx..."
+    systemctl start nginx
+    if ! systemctl is-active --quiet nginx; then
+        print_error "Impossible de démarrer le service Nginx"
+        exit 1
+    fi
+    print_message "Service Nginx démarré avec succès"
 fi
 
+# MariaDB
 if ! systemctl is-active --quiet mysql; then
-    print_error "Le service MariaDB n'est pas en cours d'exécution"
-    exit 1
+    print_message "Démarrage du service MariaDB..."
+    systemctl start mysql
+    if ! systemctl is-active --quiet mysql; then
+        print_error "Impossible de démarrer le service MariaDB"
+        exit 1
+    fi
+    print_message "Service MariaDB démarré avec succès"
 fi
 
 # Vérification des ports
