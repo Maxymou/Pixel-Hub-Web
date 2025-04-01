@@ -70,10 +70,54 @@ print_message "Nginx : $NGINX_VERSION"
 print_message "MariaDB : $MARIADB_VERSION"
 print_message "PHP : $PHP_VERSION"
 
+# Installation des dépendances manquantes
+print_message "Vérification des dépendances..."
+
+# Vérification de Git
+if ! command -v git &> /dev/null; then
+    print_message "Installation de Git..."
+    apt-get update && apt-get install -y git
+fi
+
+# Vérification de Composer
+if ! command -v composer &> /dev/null; then
+    print_message "Installation de Composer..."
+    curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+fi
+
+# Vérification des extensions PHP manquantes
+print_message "Vérification des extensions PHP..."
+PHP_MODULES=("php8.2-zip" "php8.2-bcmath" "php8.2-curl")
+for module in "${PHP_MODULES[@]}"; do
+    if ! dpkg -l | grep -q "^ii  $module "; then
+        print_message "Installation de $module..."
+        apt-get install -y $module
+    fi
+done
+
 # Création du dossier de l'application
 print_message "Création du dossier de l'application..."
+rm -rf /var/www/pixelhub
 mkdir -p /var/www/pixelhub
 cd /var/www/pixelhub
+
+# Copie des fichiers de l'application
+print_message "Copie des fichiers de l'application..."
+cp -r /home/pixel-hub/* /var/www/pixelhub/
+
+# Vérification de la présence du fichier composer.json
+if [ ! -f /var/www/pixelhub/composer.json ]; then
+    print_error "Le fichier composer.json n'a pas été copié correctement"
+    print_error "Vérifiez que les fichiers source sont présents dans /home/pixel-hub/"
+    exit 1
+fi
+
+# Configuration des permissions
+print_message "Configuration des permissions..."
+chown -R www-data:www-data /var/www/pixelhub
+chmod -R 755 /var/www/pixelhub
+chmod -R 775 /var/www/pixelhub/storage
+chmod -R 775 /var/www/pixelhub/bootstrap/cache
 
 # Création du fichier de configuration Nginx
 print_message "Création de la configuration Nginx..."
@@ -168,38 +212,13 @@ if ! netstat -tuln | grep -q ":3306 "; then
     exit 1
 fi
 
-# Installation des dépendances manquantes
-print_message "Vérification des dépendances..."
-
-# Vérification de Git
-if ! command -v git &> /dev/null; then
-    print_message "Installation de Git..."
-    apt-get update && apt-get install -y git
-fi
-
-# Vérification de Composer
-if ! command -v composer &> /dev/null; then
-    print_message "Installation de Composer..."
-    curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
-fi
-
-# Vérification des extensions PHP manquantes
-print_message "Vérification des extensions PHP..."
-PHP_MODULES=("php8.2-zip" "php8.2-bcmath" "php8.2-curl")
-for module in "${PHP_MODULES[@]}"; do
-    if ! dpkg -l | grep -q "^ii  $module "; then
-        print_message "Installation de $module..."
-        apt-get install -y $module
-    fi
-done
-
 # Création de la base de données
 print_message "Création de la base de données..."
 mysql -u root -e "CREATE DATABASE IF NOT EXISTS pixelhub;"
 
 # Création du fichier .env
 print_message "Création du fichier .env..."
-cat > .env << 'EOL'
+cat > /var/www/pixelhub/.env << 'EOL'
 APP_NAME=PixelHub
 APP_ENV=production
 APP_KEY=
@@ -222,19 +241,10 @@ SESSION_DRIVER=file
 SESSION_LIFETIME=120
 EOL
 
-# Copie des fichiers de l'application
-print_message "Copie des fichiers de l'application..."
-cp -r /home/pixel-hub/* /var/www/pixelhub/
-
-# Configuration des permissions
-chown -R www-data:www-data /var/www/pixelhub
-chmod -R 755 /var/www/pixelhub
-chmod -R 775 /var/www/pixelhub/storage
-chmod -R 775 /var/www/pixelhub/bootstrap/cache
-
 # Installation des dépendances
 print_message "Installation des dépendances..."
 cd /var/www/pixelhub
+export COMPOSER_ALLOW_SUPERUSER=1
 composer install --no-dev --optimize-autoloader
 
 # Génération de la clé d'application
