@@ -114,13 +114,6 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-# Vérification de la présence du fichier composer.json
-if [ ! -f /var/www/pixelhub/composer.json ]; then
-    print_error "Le fichier composer.json n'a pas été trouvé après le clonage"
-    print_error "Vérifiez que le dépôt Git est correctement configuré"
-    exit 1
-fi
-
 # Création des dossiers nécessaires
 print_message "Création des dossiers nécessaires..."
 mkdir -p /var/www/pixelhub/storage/framework/{sessions,views,cache}
@@ -214,21 +207,6 @@ if ! systemctl is-active mysql >/dev/null 2>&1; then
     print_message "Service MariaDB démarré avec succès"
 fi
 
-# Vérification des ports
-if ! netstat -tuln | grep -q ":80 "; then
-    print_error "Le port 80 n'est pas ouvert (Nginx)"
-    print_error "Vérifiez les logs avec : tail -f /var/log/nginx/error.log"
-    print_error "Vérifiez le statut avec : systemctl status nginx"
-    exit 1
-fi
-
-if ! netstat -tuln | grep -q ":3306 "; then
-    print_error "Le port 3306 n'est pas ouvert (MariaDB)"
-    print_error "Vérifiez les logs avec : tail -f /var/log/mysql/error.log"
-    print_error "Vérifiez le statut avec : systemctl status mysql"
-    exit 1
-fi
-
 # Création de la base de données
 print_message "Création de la base de données..."
 mysql -u root -e "CREATE DATABASE IF NOT EXISTS pixelhub;"
@@ -313,14 +291,6 @@ print_message "Configuration des permissions pour le fichier Handler.php..."
 chown www-data:www-data /var/www/pixelhub/app/Exceptions/Handler.php
 chmod 644 /var/www/pixelhub/app/Exceptions/Handler.php
 
-# Vérification du contenu du fichier Handler.php
-print_message "Vérification du contenu du fichier Handler.php..."
-if ! grep -q "public function register()" /var/www/pixelhub/app/Exceptions/Handler.php; then
-    print_error "La méthode register() n'est pas publique dans le fichier Handler.php"
-    print_error "Vérifiez le contenu du fichier : cat /var/www/pixelhub/app/Exceptions/Handler.php"
-    exit 1
-fi
-
 # Installation des dépendances
 print_message "Installation des dépendances..."
 cd /var/www/pixelhub
@@ -338,7 +308,7 @@ export COMPOSER_MEMORY_LIMIT=-1
 
 # Installation des dépendances en tant que www-data
 print_message "Installation des dépendances avec Composer..."
-sudo -u www-data composer update --no-dev --optimize-autoloader --no-interaction
+sudo -u www-data composer install --no-dev --optimize-autoloader --no-interaction
 if [ $? -ne 0 ]; then
     print_error "Échec de l'installation des dépendances Composer"
     print_error "Vérifiez les logs avec : tail -f /var/log/composer.log"
@@ -359,17 +329,17 @@ chmod -R 755 /var/www/pixelhub/vendor
 
 # Génération de la clé d'application
 print_message "Génération de la clé d'application..."
-php artisan key:generate
+sudo -u www-data php artisan key:generate
 
 # Exécution des migrations
 print_message "Exécution des migrations..."
-php artisan migrate --force
+sudo -u www-data php artisan migrate --force
 
 # Optimisation
 print_message "Optimisation de l'application..."
-php artisan config:cache
-php artisan route:cache
-php artisan view:cache
+sudo -u www-data php artisan config:cache
+sudo -u www-data php artisan route:cache
+sudo -u www-data php artisan view:cache
 
 # Redémarrage de Nginx
 print_message "Redémarrage de Nginx..."
