@@ -101,6 +101,10 @@ rm -rf /var/www/pixelhub
 mkdir -p /var/www/pixelhub
 cd /var/www/pixelhub
 
+# Configuration de Git pour permettre le dépôt
+print_message "Configuration de Git..."
+git config --global --add safe.directory /var/www/pixelhub
+
 # Clonage du dépôt Git
 print_message "Clonage du dépôt Git..."
 git clone https://github.com/Maxymou/pixel-hub-web.git .
@@ -116,6 +120,12 @@ if [ ! -f /var/www/pixelhub/composer.json ]; then
     print_error "Vérifiez que le dépôt Git est correctement configuré"
     exit 1
 fi
+
+# Création des dossiers nécessaires
+print_message "Création des dossiers nécessaires..."
+mkdir -p /var/www/pixelhub/storage/framework/{sessions,views,cache}
+mkdir -p /var/www/pixelhub/bootstrap/cache
+mkdir -p /var/www/pixelhub/storage/logs
 
 # Configuration des permissions
 print_message "Configuration des permissions..."
@@ -250,7 +260,19 @@ EOL
 print_message "Installation des dépendances..."
 cd /var/www/pixelhub
 export COMPOSER_ALLOW_SUPERUSER=1
-composer install --no-dev --optimize-autoloader
+composer install --no-dev --optimize-autoloader --no-interaction
+if [ $? -ne 0 ]; then
+    print_error "Échec de l'installation des dépendances Composer"
+    print_error "Vérifiez les logs avec : tail -f /var/log/composer.log"
+    exit 1
+fi
+
+# Vérification de l'installation des dépendances
+if [ ! -f /var/www/pixelhub/vendor/autoload.php ]; then
+    print_error "Les dépendances n'ont pas été installées correctement"
+    print_error "Vérifiez les logs avec : tail -f /var/log/composer.log"
+    exit 1
+fi
 
 # Génération de la clé d'application
 print_message "Génération de la clé d'application..."
