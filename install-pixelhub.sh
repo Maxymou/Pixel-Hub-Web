@@ -92,6 +92,31 @@ if ! netstat -tuln | grep -q ":3306 "; then
     exit 1
 fi
 
+# Installation des dépendances manquantes
+print_message "Vérification des dépendances..."
+
+# Vérification de Git
+if ! command -v git &> /dev/null; then
+    print_message "Installation de Git..."
+    apt-get update && apt-get install -y git
+fi
+
+# Vérification de Composer
+if ! command -v composer &> /dev/null; then
+    print_message "Installation de Composer..."
+    curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+fi
+
+# Vérification des extensions PHP manquantes
+print_message "Vérification des extensions PHP..."
+PHP_MODULES=("php8.2-zip" "php8.2-bcmath" "php8.2-curl")
+for module in "${PHP_MODULES[@]}"; do
+    if ! dpkg -l | grep -q "^ii  $module "; then
+        print_message "Installation de $module..."
+        apt-get install -y $module
+    fi
+done
+
 # Installation de PixelHub
 print_message "Installation de PixelHub..."
 
