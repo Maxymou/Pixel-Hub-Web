@@ -258,6 +258,10 @@ SESSION_DRIVER=file
 SESSION_LIFETIME=120
 EOL
 
+# Création du dossier Exceptions s'il n'existe pas
+print_message "Création du dossier Exceptions..."
+mkdir -p /var/www/pixelhub/app/Exceptions
+
 # Correction du fichier Handler.php
 print_message "Correction du fichier Handler.php..."
 cat > /var/www/pixelhub/app/Exceptions/Handler.php << 'EOL'
@@ -303,6 +307,11 @@ class Handler extends ExceptionHandler
     }
 }
 EOL
+
+# Configuration des permissions pour le fichier Handler.php
+print_message "Configuration des permissions pour le fichier Handler.php..."
+chown www-data:www-data /var/www/pixelhub/app/Exceptions/Handler.php
+chmod 644 /var/www/pixelhub/app/Exceptions/Handler.php
 
 # Installation des dépendances
 print_message "Installation des dépendances..."
