@@ -101,14 +101,19 @@ rm -rf /var/www/pixelhub
 mkdir -p /var/www/pixelhub
 cd /var/www/pixelhub
 
-# Copie des fichiers de l'application
-print_message "Copie des fichiers de l'application..."
-cp -r /home/pixel-hub/* /var/www/pixelhub/
+# Clonage du dépôt Git
+print_message "Clonage du dépôt Git..."
+git clone https://github.com/Maxymou/pixel-hub-web.git .
+if [ $? -ne 0 ]; then
+    print_error "Échec du clonage du dépôt Git"
+    print_error "Vérifiez votre connexion internet et les permissions du dossier"
+    exit 1
+fi
 
 # Vérification de la présence du fichier composer.json
 if [ ! -f /var/www/pixelhub/composer.json ]; then
-    print_error "Le fichier composer.json n'a pas été copié correctement"
-    print_error "Vérifiez que les fichiers source sont présents dans /home/pixel-hub/"
+    print_error "Le fichier composer.json n'a pas été trouvé après le clonage"
+    print_error "Vérifiez que le dépôt Git est correctement configuré"
     exit 1
 fi
 
