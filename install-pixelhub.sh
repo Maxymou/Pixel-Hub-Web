@@ -126,6 +126,7 @@ print_message "Création des dossiers nécessaires..."
 mkdir -p /var/www/pixelhub/storage/framework/{sessions,views,cache}
 mkdir -p /var/www/pixelhub/bootstrap/cache
 mkdir -p /var/www/pixelhub/storage/logs
+mkdir -p /var/www/pixelhub/vendor
 
 # Configuration des permissions
 print_message "Configuration des permissions..."
@@ -133,6 +134,7 @@ chown -R www-data:www-data /var/www/pixelhub
 chmod -R 755 /var/www/pixelhub
 chmod -R 775 /var/www/pixelhub/storage
 chmod -R 775 /var/www/pixelhub/bootstrap/cache
+chmod -R 775 /var/www/pixelhub/vendor
 
 # Création du fichier de configuration Nginx
 print_message "Création de la configuration Nginx..."
@@ -271,9 +273,9 @@ print_message "Configuration de Composer..."
 export COMPOSER_ALLOW_SUPERUSER=1
 export COMPOSER_MEMORY_LIMIT=-1
 
-# Installation des dépendances
+# Installation des dépendances en tant que www-data
 print_message "Installation des dépendances avec Composer..."
-composer update --no-dev --optimize-autoloader --no-interaction --no-scripts
+sudo -u www-data composer install --no-dev --optimize-autoloader --no-interaction
 if [ $? -ne 0 ]; then
     print_error "Échec de l'installation des dépendances Composer"
     print_error "Vérifiez les logs avec : tail -f /var/log/composer.log"
