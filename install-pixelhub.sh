@@ -259,8 +259,21 @@ EOL
 # Installation des dépendances
 print_message "Installation des dépendances..."
 cd /var/www/pixelhub
+
+# Suppression du fichier composer.lock s'il existe
+if [ -f composer.lock ]; then
+    print_message "Suppression du fichier composer.lock..."
+    rm composer.lock
+fi
+
+# Configuration de Composer
+print_message "Configuration de Composer..."
 export COMPOSER_ALLOW_SUPERUSER=1
-composer install --no-dev --optimize-autoloader --no-interaction
+export COMPOSER_MEMORY_LIMIT=-1
+
+# Installation des dépendances
+print_message "Installation des dépendances avec Composer..."
+composer update --no-dev --optimize-autoloader --no-interaction --no-scripts
 if [ $? -ne 0 ]; then
     print_error "Échec de l'installation des dépendances Composer"
     print_error "Vérifiez les logs avec : tail -f /var/log/composer.log"
@@ -273,6 +286,11 @@ if [ ! -f /var/www/pixelhub/vendor/autoload.php ]; then
     print_error "Vérifiez les logs avec : tail -f /var/log/composer.log"
     exit 1
 fi
+
+# Vérification des permissions du dossier vendor
+print_message "Vérification des permissions du dossier vendor..."
+chown -R www-data:www-data /var/www/pixelhub/vendor
+chmod -R 755 /var/www/pixelhub/vendor
 
 # Génération de la clé d'application
 print_message "Génération de la clé d'application..."
