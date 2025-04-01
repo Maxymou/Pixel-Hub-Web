@@ -31,7 +31,7 @@ class Handler extends ExceptionHandler
      *
      * @return void
      */
-    public function register()
+    protected function register()
     {
         $this->reportable(function (Throwable $e) {
             //
