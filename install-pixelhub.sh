@@ -70,6 +70,58 @@ print_message "Nginx : $NGINX_VERSION"
 print_message "MariaDB : $MARIADB_VERSION"
 print_message "PHP : $PHP_VERSION"
 
+# Création du dossier de l'application
+print_message "Création du dossier de l'application..."
+mkdir -p /var/www/pixelhub
+cd /var/www/pixelhub
+
+# Création du fichier de configuration Nginx
+print_message "Création de la configuration Nginx..."
+cat > /etc/nginx/sites-available/pixelhub.conf << 'EOL'
+server {
+    listen 80;
+    server_name localhost;
+    root /var/www/pixelhub/public;
+    index index.php index.html;
+
+    add_header X-Frame-Options "SAMEORIGIN";
+    add_header X-Content-Type-Options "nosniff";
+
+    charset utf-8;
+
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    location = /favicon.ico { access_log off; log_not_found off; }
+    location = /robots.txt  { access_log off; log_not_found off; }
+
+    error_page 404 /index.php;
+
+    location ~ \.php$ {
+        fastcgi_pass unix:/var/run/php/php8.2-fpm.sock;
+        fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
+        include fastcgi_params;
+    }
+
+    location ~ /\.(?!well-known).* {
+        deny all;
+    }
+}
+EOL
+
+# Création du lien symbolique
+print_message "Création du lien symbolique pour la configuration Nginx..."
+ln -sf /etc/nginx/sites-available/pixelhub.conf /etc/nginx/sites-enabled/
+
+# Vérification de la configuration Nginx
+print_message "Vérification de la configuration Nginx..."
+if ! nginx -t; then
+    print_error "La configuration Nginx est invalide"
+    print_error "Vérifiez les logs avec : tail -f /var/log/nginx/error.log"
+    exit 1
+fi
+
 # Vérification et démarrage des services
 print_message "Vérification des services..."
 
@@ -140,51 +192,6 @@ for module in "${PHP_MODULES[@]}"; do
         apt-get install -y $module
     fi
 done
-
-# Installation de PixelHub
-print_message "Installation de PixelHub..."
-
-# Création du dossier de l'application
-mkdir -p /var/www/pixelhub
-cd /var/www/pixelhub
-
-# Création du fichier de configuration Nginx
-print_message "Création de la configuration Nginx..."
-cat > /etc/nginx/sites-available/pixelhub.conf << 'EOL'
-server {
-    listen 80;
-    server_name localhost;
-    root /var/www/pixelhub/public;
-    index index.php index.html;
-
-    add_header X-Frame-Options "SAMEORIGIN";
-    add_header X-Content-Type-Options "nosniff";
-
-    charset utf-8;
-
-    location / {
-        try_files $uri $uri/ /index.php?$query_string;
-    }
-
-    location = /favicon.ico { access_log off; log_not_found off; }
-    location = /robots.txt  { access_log off; log_not_found off; }
-
-    error_page 404 /index.php;
-
-    location ~ \.php$ {
-        fastcgi_pass unix:/var/run/php/php8.2-fpm.sock;
-        fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
-        include fastcgi_params;
-    }
-
-    location ~ /\.(?!well-known).* {
-        deny all;
-    }
-}
-EOL
-
-# Création du lien symbolique
-ln -s /etc/nginx/sites-available/pixelhub.conf /etc/nginx/sites-enabled/
 
 # Création de la base de données
 print_message "Création de la base de données..."
