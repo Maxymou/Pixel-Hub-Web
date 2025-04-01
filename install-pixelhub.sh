@@ -124,9 +124,76 @@ print_message "Installation de PixelHub..."
 mkdir -p /var/www/pixelhub
 cd /var/www/pixelhub
 
-# Clonage du repository
-print_message "Clonage du repository..."
-git clone https://github.com/Maxymou/pixel-hub-web.git .
+# Création du fichier de configuration Nginx
+print_message "Création de la configuration Nginx..."
+cat > /etc/nginx/sites-available/pixelhub.conf << 'EOL'
+server {
+    listen 80;
+    server_name localhost;
+    root /var/www/pixelhub/public;
+    index index.php index.html;
+
+    add_header X-Frame-Options "SAMEORIGIN";
+    add_header X-Content-Type-Options "nosniff";
+
+    charset utf-8;
+
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    location = /favicon.ico { access_log off; log_not_found off; }
+    location = /robots.txt  { access_log off; log_not_found off; }
+
+    error_page 404 /index.php;
+
+    location ~ \.php$ {
+        fastcgi_pass unix:/var/run/php/php8.2-fpm.sock;
+        fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
+        include fastcgi_params;
+    }
+
+    location ~ /\.(?!well-known).* {
+        deny all;
+    }
+}
+EOL
+
+# Création du lien symbolique
+ln -s /etc/nginx/sites-available/pixelhub.conf /etc/nginx/sites-enabled/
+
+# Création de la base de données
+print_message "Création de la base de données..."
+mysql -u root -e "CREATE DATABASE IF NOT EXISTS pixelhub;"
+
+# Création du fichier .env
+print_message "Création du fichier .env..."
+cat > .env << 'EOL'
+APP_NAME=PixelHub
+APP_ENV=production
+APP_KEY=
+APP_DEBUG=false
+APP_URL=http://localhost
+
+LOG_CHANNEL=stack
+LOG_LEVEL=error
+
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=pixelhub
+DB_USERNAME=root
+DB_PASSWORD=
+
+CACHE_DRIVER=file
+FILESYSTEM_DISK=public
+SESSION_DRIVER=file
+SESSION_LIFETIME=120
+EOL
+
+# Copie des fichiers de l'application
+print_message "Copie des fichiers de l'application..."
+cp -r /home/pixel-hub/* /var/www/pixelhub/
 
 # Configuration des permissions
 chown -R www-data:www-data /var/www/pixelhub
@@ -134,23 +201,14 @@ chmod -R 755 /var/www/pixelhub
 chmod -R 775 /var/www/pixelhub/storage
 chmod -R 775 /var/www/pixelhub/bootstrap/cache
 
-# Configuration de Nginx
-print_message "Configuration de Nginx..."
-cp pixelhub.conf /etc/nginx/sites-available/
-ln -s /etc/nginx/sites-available/pixelhub.conf /etc/nginx/sites-enabled/
-
-# Création de la base de données
-print_message "Création de la base de données..."
-mysql -u root -e "CREATE DATABASE IF NOT EXISTS pixelhub;"
-
-# Configuration de l'environnement
-print_message "Configuration de l'environnement..."
-cp .env.example .env
-php artisan key:generate
-
 # Installation des dépendances
 print_message "Installation des dépendances..."
+cd /var/www/pixelhub
 composer install --no-dev --optimize-autoloader
+
+# Génération de la clé d'application
+print_message "Génération de la clé d'application..."
+php artisan key:generate
 
 # Exécution des migrations
 print_message "Exécution des migrations..."
