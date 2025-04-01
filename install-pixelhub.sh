@@ -275,7 +275,7 @@ export COMPOSER_MEMORY_LIMIT=-1
 
 # Installation des dépendances en tant que www-data
 print_message "Installation des dépendances avec Composer..."
-sudo -u www-data composer install --no-dev --optimize-autoloader --no-interaction
+sudo -u www-data composer update --no-dev --optimize-autoloader --no-interaction
 if [ $? -ne 0 ]; then
     print_error "Échec de l'installation des dépendances Composer"
     print_error "Vérifiez les logs avec : tail -f /var/log/composer.log"
