@@ -42,58 +42,26 @@ if [ "$EUID" -ne 0 ]; then
     exit 1
 fi
 
-# Vérification de Nginx
-if ! command -v nginx &> /dev/null; then
-    print_error "Nginx n'est pas installé. Veuillez installer la stack LEMP d'abord."
+# Vérification de l'existence de install-lemp-server.sh
+if [ ! -f "install-lemp-server.sh" ]; then
+    print_error "Le fichier install-lemp-server.sh n'est pas trouvé"
+    print_error "Veuillez télécharger le script depuis : https://raw.githubusercontent.com/Maxymou/install-lemp-server/main/install-lemp-server.sh"
     exit 1
 fi
 
-# Vérification de MariaDB
-if ! command -v mysql &> /dev/null; then
-    print_error "MariaDB n'est pas installé. Veuillez installer la stack LEMP d'abord."
+# Vérification que install-lemp-server.sh est exécutable
+if [ ! -x "install-lemp-server.sh" ]; then
+    print_message "Rendre install-lemp-server.sh exécutable..."
+    chmod +x install-lemp-server.sh
+fi
+
+# Exécution de install-lemp-server.sh
+print_message "Installation de la stack LEMP..."
+./install-lemp-server.sh
+if [ $? -ne 0 ]; then
+    print_error "L'installation de la stack LEMP a échoué"
     exit 1
 fi
-
-# Vérification de PHP
-if ! command -v php &> /dev/null; then
-    print_error "PHP n'est pas installé. Veuillez installer la stack LEMP d'abord."
-    exit 1
-fi
-
-# Vérification des versions
-NGINX_VERSION=$(nginx -v 2>&1 | cut -d'/' -f2)
-MARIADB_VERSION=$(mysql --version | cut -d' ' -f4)
-PHP_VERSION=$(php -v | head -n1 | cut -d' ' -f2 | cut -d'.' -f1-2)
-
-print_message "Versions détectées :"
-print_message "Nginx : $NGINX_VERSION"
-print_message "MariaDB : $MARIADB_VERSION"
-print_message "PHP : $PHP_VERSION"
-
-# Installation des dépendances manquantes
-print_message "Vérification des dépendances..."
-
-# Vérification de Git
-if ! command -v git &> /dev/null; then
-    print_message "Installation de Git..."
-    apt-get update && apt-get install -y git
-fi
-
-# Vérification de Composer
-if ! command -v composer &> /dev/null; then
-    print_message "Installation de Composer..."
-    curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
-fi
-
-# Vérification des extensions PHP manquantes
-print_message "Vérification des extensions PHP..."
-PHP_MODULES=("php8.2-zip" "php8.2-bcmath" "php8.2-curl")
-for module in "${PHP_MODULES[@]}"; do
-    if ! dpkg -l | grep -q "^ii  $module "; then
-        print_message "Installation de $module..."
-        apt-get install -y $module
-    fi
-done
 
 # Création du dossier de l'application
 print_message "Création du dossier de l'application..."
@@ -174,37 +142,6 @@ if ! nginx -t; then
     print_error "La configuration Nginx est invalide"
     print_error "Vérifiez les logs avec : tail -f /var/log/nginx/error.log"
     exit 1
-fi
-
-# Vérification et démarrage des services
-print_message "Vérification des services..."
-
-# Nginx
-if ! systemctl is-active nginx >/dev/null 2>&1; then
-    print_message "Démarrage du service Nginx..."
-    systemctl start nginx
-    sleep 2
-    if ! systemctl is-active nginx >/dev/null 2>&1; then
-        print_error "Impossible de démarrer le service Nginx"
-        print_error "Vérifiez les logs avec : tail -f /var/log/nginx/error.log"
-        print_error "Vérifiez le statut avec : systemctl status nginx"
-        exit 1
-    fi
-    print_message "Service Nginx démarré avec succès"
-fi
-
-# MariaDB
-if ! systemctl is-active mysql >/dev/null 2>&1; then
-    print_message "Démarrage du service MariaDB..."
-    systemctl start mysql
-    sleep 2
-    if ! systemctl is-active mysql >/dev/null 2>&1; then
-        print_error "Impossible de démarrer le service MariaDB"
-        print_error "Vérifiez les logs avec : tail -f /var/log/mysql/error.log"
-        print_error "Vérifiez le statut avec : systemctl status mysql"
-        exit 1
-    fi
-    print_message "Service MariaDB démarré avec succès"
 fi
 
 # Création de la base de données
